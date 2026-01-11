@@ -45,6 +45,14 @@ Use the `--alarms` flag to set daily alarms (in 24-hour format, local time):
 cargo run --alarms 09:00 17:30 -- America/New_York
 ```
 
+### GUI Mode
+
+To run the application with a graphical user interface instead of the terminal:
+
+```bash
+cargo run -- --gui
+```
+
 ### Persistence
 
 The application automatically saves your settings to your user configuration directory (e.g., `~/.config/rust-world-clock/` on Linux/macOS).
