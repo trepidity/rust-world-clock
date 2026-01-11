@@ -2,7 +2,8 @@
 
 A terminal-based world clock application written in Rust. It displays the current time for multiple time zones in a tiled layout, supports daily alarms, and persists your configuration between sessions.
 
-![Screenshot](https://via.placeholder.com/800x400?text=World+Clock+TUI+Screenshot)
+<img width="1007" height="463" alt="image" src="https://github.com/user-attachments/assets/dccf73b1-3dd9-4a9e-87ef-d8776379b389" />
+
 
 ## Features
 
