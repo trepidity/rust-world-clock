@@ -1,3 +1,10 @@
+/*
+ * Rust World Clock
+ * Author: Jared L Jennings
+ * Description: A terminal-based world clock application that displays multiple time zones
+ *              in a tiled layout, supports local-time alarms, and persists user configuration.
+ */
+
 use chrono::{Local, NaiveTime, Timelike, Utc};
 use chrono_tz::Tz;
 use clap::Parser;
