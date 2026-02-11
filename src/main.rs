@@ -7,8 +7,13 @@
 
 mod tui;
 mod gui;
+mod config;
+mod theme;
+mod widget;
+mod grid;
+mod edit_mode;
 
-use chrono::{NaiveTime, Utc};
+use chrono::NaiveTime;
 use chrono_tz::Tz;
 use clap::Parser;
 use directories::ProjectDirs;
@@ -29,6 +34,10 @@ struct Args {
     /// Run in GUI mode
     #[arg(long)]
     gui: bool,
+
+    /// Path to config file
+    #[arg(long)]
+    config: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -43,7 +52,7 @@ pub struct Clock {
     pub timezone: Tz,
 }
 
-fn get_config_dir() -> Option<PathBuf> {
+pub fn get_config_dir() -> Option<PathBuf> {
     if let Some(proj_dirs) = ProjectDirs::from("com", "rust_world_clock", "rust_world_clock") {
         let config_dir = proj_dirs.config_dir();
         if !config_dir.exists() {
@@ -105,7 +114,7 @@ fn load_alarms() -> Vec<NaiveTime> {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
-    
+
     // Handle Alarms
     let mut alarms = Vec::new();
     if !args.alarms.is_empty() {
@@ -123,11 +132,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         // No alarms via CLI: Try to load from config.
         alarms = load_alarms();
-        if alarms.is_empty() && args.alarms.is_empty() { 
-            // Optional: You could choose to do nothing or set defaults.
-            // For now, empty is fine.
-        }
     }
+
+    // Load app config (theme, grid, cells)
+    let app_config = config::load_config(args.config.as_deref());
 
     // Handle Clocks
     let mut clocks = Vec::new();
@@ -137,7 +145,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         load_clocks()
     };
-    
+
     let zone_strs = if zone_strs.is_empty() {
         println!("No timezones specified and no configuration found.");
         println!("To customize, run: cargo run -- <TimeZones...>");
@@ -167,7 +175,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.gui {
         gui::run(clocks, alarms)?;
     } else {
-        tui::run(&clocks, &alarms)?;
+        tui::run(&clocks, &alarms, app_config)?;
     }
 
     Ok(())
