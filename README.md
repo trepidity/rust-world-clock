@@ -88,7 +88,13 @@ Running without arguments loads your last configuration. Running with new argume
 
 ### Edit Mode
 
-<!-- TODO: Add screenshot of edit mode with status bar -->
+<img width="1116" height="582" alt="image" src="https://github.com/user-attachments/assets/beb66828-f0bd-4a2e-a996-f65e0fbb0d0f" />
+
+<img width="1116" height="582" alt="image" src="https://github.com/user-attachments/assets/c8a29aa6-1050-4c0c-9799-de06698af272" />
+
+<img width="1116" height="582" alt="image" src="https://github.com/user-attachments/assets/e0964bb2-9573-407b-8d31-0973131d1e58" />
+
+<img width="1116" height="582" alt="image" src="https://github.com/user-attachments/assets/96ca94b0-04d8-4f19-928c-dee9fab5f233" />
 
 | Key | Action |
 | :--- | :--- |
@@ -107,7 +113,9 @@ Running without arguments loads your last configuration. Running with new argume
 
 Six built-in themes are available, selectable via the theme picker (`h` in edit mode) or in `config.toml`:
 
-<!-- TODO: Add screenshot grid showing each theme -->
+<img width="1032" height="378" alt="image" src="https://github.com/user-attachments/assets/57b1148a-cf8e-48dd-ae3b-5c5dbcfd8395" />
+
+
 
 | Theme | Description |
 | :--- | :--- |
