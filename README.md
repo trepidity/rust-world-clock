@@ -13,7 +13,7 @@ A terminal-based world clock application written in Rust. Display the current ti
 - **Interactive Edit Mode** — Drag-and-drop widgets, add/remove rows and columns, pick themes, all with mouse and keyboard
 - **3 Widget Display Modes** — Time only, date only, or time and date
 - **Daily Alarms** — Set local-time alarms with visual alerts (red borders)
-- **TOML Configuration** — Full grid layout, theme, and widget config saved to `~/.config/rust-world-clock/config.toml`
+- **TOML Configuration** — Full grid layout, theme, and widget config persisted automatically
 - **GUI Mode** — Optional graphical interface via iced
 
 ## Installation
@@ -58,7 +58,15 @@ cargo run -- --gui
 
 ### Persistence
 
-Settings are saved to `~/.config/rust-world-clock/`:
+Settings are saved to a platform-specific config directory:
+
+| Platform | Config Directory |
+| :--- | :--- |
+| macOS | `~/Library/Application Support/rust-world-clock/` |
+| Linux | `~/.config/rust-world-clock/` |
+| Windows | `%APPDATA%\rust-world-clock\config\` |
+
+Files stored in this directory:
 
 | File | Contents |
 | :--- | :--- |
@@ -131,7 +139,7 @@ Colors accept hex values (`#ff5555`) or named colors (`red`, `cyan`, etc.).
 
 ## Configuration
 
-The full grid layout is configured via TOML at `~/.config/rust-world-clock/config.toml`:
+The full grid layout is configured via TOML at `config.toml` in your config directory (see [Persistence](#persistence) for the path on your platform):
 
 ```toml
 theme = "dracula"

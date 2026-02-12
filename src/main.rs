@@ -53,7 +53,7 @@ pub struct Clock {
 }
 
 pub fn get_config_dir() -> Option<PathBuf> {
-    if let Some(proj_dirs) = ProjectDirs::from("com", "rust_world_clock", "rust_world_clock") {
+    if let Some(proj_dirs) = ProjectDirs::from("", "", "rust-world-clock") {
         let config_dir = proj_dirs.config_dir();
         if !config_dir.exists() {
             let _ = fs::create_dir_all(config_dir);
