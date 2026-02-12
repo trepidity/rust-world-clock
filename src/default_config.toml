@@ -1,0 +1,28 @@
+# Rust World Clock Configuration
+#
+# Theme: one of "default", "dracula", "nord", "solarized_dark", "gruvbox", "monokai"
+# theme = "default"
+
+# Grid dimensions (0 = auto-calculate from clock count)
+# [grid]
+# rows = 0
+# cols = 0
+
+# Clock cells - each defines a clock widget in the grid
+# [[cells]]
+# row = 0
+# col = 0
+# timezone = "America/New_York"
+# widget = "time_and_date"   # "time_only", "date_only", or "time_and_date"
+# label = "New York"         # optional display label
+
+# Custom theme colors (only used when theme = "custom")
+# Colors can be named (e.g., "red", "cyan") or hex (e.g., "#ff5555")
+# [custom_theme]
+# background = "#1a1b26"
+# border = "#565f89"
+# border_alarm = "#f7768e"
+# title = "#c0caf5"
+# time_text = "#9ece6a"
+# date_text = "#565f89"
+# label_text = "#7aa2f7"
