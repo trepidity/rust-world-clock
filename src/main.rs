@@ -12,6 +12,7 @@ mod theme;
 mod widget;
 mod grid;
 mod edit_mode;
+mod tz_abbrev;
 
 use chrono::NaiveTime;
 use chrono_tz::Tz;
