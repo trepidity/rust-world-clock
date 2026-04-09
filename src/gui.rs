@@ -1,7 +1,7 @@
 use crate::Clock;
 use chrono::{Local, NaiveTime, Timelike, Utc};
 use iced::{
-    Color, Element, Fill, Subscription, Task, Theme, application, border,
+    Color, Element, Fill, Font, Subscription, Task, Theme, application, border,
     widget::{column, container, row, text},
 };
 use std::time::Duration;
@@ -63,7 +63,7 @@ fn view(app: &WorldClockApp) -> Element<'_, Message> {
     });
 
     let content = app.clocks.iter().fold(
-        row!().spacing(20).padding(20),
+        row!().spacing(20).padding(20).width(Fill).height(Fill),
         |row, clock| row.push(clock_card(clock, is_alarm_active)),
     );
 
@@ -87,12 +87,15 @@ fn clock_card(clock: &Clock, is_alarm_active: bool) -> Element<'static, Message>
     container(
         column![
             text(clock.name.clone()).size(24),
-            text(time_str).size(72),
-            text(date_str).size(28),
+            text(time_str).size(72).font(Font::MONOSPACE),
+            text(date_str).size(28).font(Font::MONOSPACE),
         ]
         .spacing(10)
+        .width(Fill)
+        .height(Fill)
         .align_x(iced::alignment::Horizontal::Center),
     )
+    .width(Fill)
     .padding(20)
     .style(move |_| {
         let border_color = if is_alarm_active {
