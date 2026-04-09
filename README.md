@@ -26,6 +26,15 @@ cd rust-world-clock
 cargo build --release
 ```
 
+## Development
+
+Enable the repo's pre-push hook so pushes are blocked unless formatting, Clippy, and tests all pass:
+
+```bash
+git config core.hooksPath .githooks
+chmod +x .githooks/pre-push
+```
+
 ## Usage
 
 ### Basic Usage
