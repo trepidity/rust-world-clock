@@ -67,9 +67,9 @@ impl Application for WorldClockApp {
 
             container(
                 column![
-                    text(&clock.name).size(20).style(Color::from_rgb(1.0, 1.0, 0.0)), // Yellow-ish
-                    text(time_str).size(40).style(Color::from_rgb(0.0, 1.0, 1.0)), // Cyan-ish
-                    text(date_str).size(15).style(Color::from_rgb(0.5, 0.5, 0.5)), // Gray
+                    text(&clock.name).size(24).style(Color::from_rgb(1.0, 1.0, 0.0)), // Yellow-ish
+                    text(time_str).size(72).style(Color::from_rgb(0.0, 1.0, 1.0)), // Cyan-ish
+                    text(date_str).size(28).style(Color::from_rgb(0.5, 0.5, 0.5)), // Gray
                 ]
                 .align_items(Alignment::Center)
                 .spacing(10)

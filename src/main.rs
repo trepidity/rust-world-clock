@@ -153,7 +153,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Example: cargo run -- America/New_York Europe/London");
         println!("Defaulting to Europe/London in 3 seconds...");
         std::thread::sleep(Duration::from_secs(3));
-        vec!["Europe/London".to_string()]
+        vec!["Europe/London".to_string(), "Asia/Kolkata".to_string()]
     } else {
         zone_strs
     };
