@@ -140,7 +140,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Handle Clocks
     let mut clocks = Vec::new();
-    let zone_strs = if !args.zones.is_empty() {
+    let zones_from_cli = !args.zones.is_empty();
+    let zone_strs = if zones_from_cli {
         save_clocks(&args.zones);
         args.zones
     } else {
@@ -167,10 +168,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 });
             }
             Err(_) => {
-                eprintln!("Invalid time zone: {}", zone_str);
-                return Ok(());
+                if zones_from_cli {
+                    eprintln!("Invalid time zone: {}", zone_str);
+                    return Ok(());
+                }
+
+                eprintln!("Ignoring invalid saved time zone: {}", zone_str);
             }
         }
+    }
+
+    if clocks.is_empty() {
+        println!("No valid saved time zones found.");
+        println!("To customize, run: cargo run -- <TimeZones...>");
+        println!("Example: cargo run -- America/New_York Europe/London");
+        println!("Defaulting to Europe/London and Asia/Kolkata in 3 seconds...");
+        std::thread::sleep(Duration::from_secs(3));
+        clocks = vec![
+            Clock {
+                name: "Europe/London".to_string(),
+                timezone: "Europe/London".parse::<Tz>().expect("default timezone should be valid"),
+            },
+            Clock {
+                name: "Asia/Kolkata".to_string(),
+                timezone: "Asia/Kolkata".parse::<Tz>().expect("default timezone should be valid"),
+            },
+        ];
     }
 
     if args.gui {
