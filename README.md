@@ -116,7 +116,6 @@ Six built-in themes are available, selectable via the theme picker (`h` in edit 
 <img width="1032" height="378" alt="image" src="https://github.com/user-attachments/assets/57b1148a-cf8e-48dd-ae3b-5c5dbcfd8395" />
 
 
-
 | Theme | Description |
 | :--- | :--- |
 | `default` | Classic terminal colors |
