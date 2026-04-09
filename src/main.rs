@@ -5,14 +5,14 @@
  *              in a tiled layout, supports local-time alarms, and persists user configuration.
  */
 
-mod tui;
-mod gui;
 mod config;
-mod theme;
-mod widget;
-mod grid;
 mod edit_mode;
+mod grid;
+mod gui;
+mod theme;
+mod tui;
 mod tz_abbrev;
+mod widget;
 
 use chrono::NaiveTime;
 use chrono_tz::Tz;
@@ -78,10 +78,10 @@ fn save_clocks(zones: &[String]) {
 fn load_clocks() -> Vec<String> {
     if let Some(config_dir) = get_config_dir() {
         let path = config_dir.join("clocks.json");
-        if let Ok(content) = fs::read_to_string(path) {
-            if let Ok(stored) = serde_json::from_str::<StoredClocks>(&content) {
-                return stored.0;
-            }
+        if let Ok(content) = fs::read_to_string(path)
+            && let Ok(stored) = serde_json::from_str::<StoredClocks>(&content)
+        {
+            return stored.0;
         }
     }
     Vec::new()
@@ -90,7 +90,10 @@ fn load_clocks() -> Vec<String> {
 fn save_alarms(alarms: &[NaiveTime]) {
     if let Some(config_dir) = get_config_dir() {
         let path = config_dir.join("alarms.json");
-        let alarm_strings: Vec<String> = alarms.iter().map(|t| t.format("%H:%M").to_string()).collect();
+        let alarm_strings: Vec<String> = alarms
+            .iter()
+            .map(|t| t.format("%H:%M").to_string())
+            .collect();
         let stored = StoredAlarms(alarm_strings);
         if let Ok(json) = serde_json::to_string(&stored) {
             let _ = fs::write(path, json);
@@ -101,13 +104,14 @@ fn save_alarms(alarms: &[NaiveTime]) {
 fn load_alarms() -> Vec<NaiveTime> {
     if let Some(config_dir) = get_config_dir() {
         let path = config_dir.join("alarms.json");
-        if let Ok(content) = fs::read_to_string(path) {
-            if let Ok(stored) = serde_json::from_str::<StoredAlarms>(&content) {
-                return stored.0
-                    .iter()
-                    .filter_map(|s| NaiveTime::parse_from_str(s, "%H:%M").ok())
-                    .collect();
-            }
+        if let Ok(content) = fs::read_to_string(path)
+            && let Ok(stored) = serde_json::from_str::<StoredAlarms>(&content)
+        {
+            return stored
+                .0
+                .iter()
+                .filter_map(|s| NaiveTime::parse_from_str(s, "%H:%M").ok())
+                .collect();
         }
     }
     Vec::new()
@@ -121,7 +125,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !args.alarms.is_empty() {
         // Alarms provided via CLI: Parse, use, and save them.
         for alarm_str in &args.alarms {
-             match NaiveTime::parse_from_str(alarm_str, "%H:%M") {
+            match NaiveTime::parse_from_str(alarm_str, "%H:%M") {
                 Ok(time) => alarms.push(time),
                 Err(_) => {
                     eprintln!("Invalid alarm format: {}", alarm_str);
@@ -187,11 +191,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         clocks = vec![
             Clock {
                 name: "Europe/London".to_string(),
-                timezone: "Europe/London".parse::<Tz>().expect("default timezone should be valid"),
+                timezone: "Europe/London"
+                    .parse::<Tz>()
+                    .expect("default timezone should be valid"),
             },
             Clock {
                 name: "Asia/Kolkata".to_string(),
-                timezone: "Asia/Kolkata".parse::<Tz>().expect("default timezone should be valid"),
+                timezone: "Asia/Kolkata"
+                    .parse::<Tz>()
+                    .expect("default timezone should be valid"),
             },
         ];
     }

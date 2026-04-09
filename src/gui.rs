@@ -1,11 +1,11 @@
 use crate::Clock;
 use chrono::{Local, NaiveTime, Timelike, Utc};
 use iced::{
+    Alignment, Application, Color, Command, Element, Length, Settings, Subscription, Theme,
     executor,
-    widget::{container, column, row, text, Container},
-    Application, Command, Element, Length, Settings, Subscription, Theme, Color, Alignment,
+    widget::{column, container, row, text},
 };
-use std::time::{Duration};
+use std::time::Duration;
 
 pub fn run(clocks: Vec<Clock>, alarms: Vec<NaiveTime>) -> iced::Result {
     WorldClockApp::run(Settings {
@@ -55,7 +55,7 @@ impl Application for WorldClockApp {
         Command::none()
     }
 
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         let is_alarm_active = self.alarms.iter().any(|&alarm| {
             self.local_time.hour() == alarm.hour() && self.local_time.minute() == alarm.minute()
         });
@@ -67,12 +67,18 @@ impl Application for WorldClockApp {
 
             container(
                 column![
-                    text(&clock.name).size(24).style(Color::from_rgb(1.0, 1.0, 0.0)), // Yellow-ish
-                    text(time_str).size(72).style(Color::from_rgb(0.0, 1.0, 1.0)), // Cyan-ish
-                    text(date_str).size(28).style(Color::from_rgb(0.5, 0.5, 0.5)), // Gray
+                    text(&clock.name)
+                        .size(24)
+                        .style(Color::from_rgb(1.0, 1.0, 0.0)), // Yellow-ish
+                    text(time_str)
+                        .size(72)
+                        .style(Color::from_rgb(0.0, 1.0, 1.0)), // Cyan-ish
+                    text(date_str)
+                        .size(28)
+                        .style(Color::from_rgb(0.5, 0.5, 0.5)), // Gray
                 ]
                 .align_items(Alignment::Center)
-                .spacing(10)
+                .spacing(10),
             )
             .padding(20)
             .style(if is_alarm_active {
@@ -88,7 +94,10 @@ impl Application for WorldClockApp {
             .into()
         });
 
-        let content = row(clock_content).spacing(20).padding(20).align_items(Alignment::Center);
+        let content = row(clock_content)
+            .spacing(20)
+            .padding(20)
+            .align_items(Alignment::Center);
 
         container(content)
             .width(Length::Fill)
@@ -99,9 +108,7 @@ impl Application for WorldClockApp {
             .into()
     }
     fn subscription(&self) -> Subscription<Message> {
-        iced::time::every(Duration::from_millis(500)).map(|_| {
-            Message::Tick(Local::now().time())
-        })
+        iced::time::every(Duration::from_millis(500)).map(|_| Message::Tick(Local::now().time()))
     }
 }
 

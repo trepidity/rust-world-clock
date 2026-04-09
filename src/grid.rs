@@ -1,8 +1,8 @@
+use crate::Clock;
 use crate::config::{AppConfig, WidgetKind};
 use crate::edit_mode::EditState;
 use crate::theme::Theme;
 use crate::widget::ClockWidget;
-use crate::Clock;
 use chrono_tz::Tz;
 use ratatui::{
     prelude::*,
@@ -62,16 +62,14 @@ impl Grid {
         for cell_config in &config.cells {
             if (cell_config.row as usize) < rows as usize
                 && (cell_config.col as usize) < cols as usize
+                && let Ok(tz) = cell_config.timezone.parse::<Tz>()
             {
-                if let Ok(tz) = cell_config.timezone.parse::<Tz>() {
-                    cells[cell_config.row as usize][cell_config.col as usize] =
-                        Some(ClockWidget::new(
-                            &cell_config.timezone,
-                            tz,
-                            cell_config.widget.clone(),
-                            cell_config.label.clone(),
-                        ));
-                }
+                cells[cell_config.row as usize][cell_config.col as usize] = Some(ClockWidget::new(
+                    &cell_config.timezone,
+                    tz,
+                    cell_config.widget.clone(),
+                    cell_config.label.clone(),
+                ));
             }
         }
 
@@ -104,8 +102,7 @@ impl Grid {
         let row_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints(
-                std::iter::repeat(Constraint::Ratio(1, self.rows as u32))
-                    .take(self.rows as usize)
+                std::iter::repeat_n(Constraint::Ratio(1, self.rows as u32), self.rows as usize)
                     .collect::<Vec<_>>(),
             )
             .split(grid_area);
@@ -118,8 +115,7 @@ impl Grid {
             let col_chunks = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints(
-                    std::iter::repeat(Constraint::Ratio(1, self.cols as u32))
-                        .take(self.cols as usize)
+                    std::iter::repeat_n(Constraint::Ratio(1, self.cols as u32), self.cols as usize)
                         .collect::<Vec<_>>(),
                 )
                 .split(row_chunks[r]);
@@ -130,8 +126,7 @@ impl Grid {
                 }
 
                 let cell_area = col_chunks[c];
-                let is_selected = edit_state
-                    .is_some_and(|es| es.selected == (r as u16, c as u16));
+                let is_selected = edit_state.is_some_and(|es| es.selected == (r as u16, c as u16));
 
                 match &self.cells[r][c] {
                     Some(widget) => {
@@ -167,8 +162,7 @@ impl Grid {
         let row_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints(
-                std::iter::repeat(Constraint::Ratio(1, self.rows as u32))
-                    .take(self.rows as usize)
+                std::iter::repeat_n(Constraint::Ratio(1, self.rows as u32), self.rows as usize)
                     .collect::<Vec<_>>(),
             )
             .split(grid_area);
@@ -178,8 +172,7 @@ impl Grid {
             let col_chunks = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints(
-                    std::iter::repeat(Constraint::Ratio(1, self.cols as u32))
-                        .take(self.cols as usize)
+                    std::iter::repeat_n(Constraint::Ratio(1, self.cols as u32), self.cols as usize)
                         .collect::<Vec<_>>(),
                 )
                 .split(row_chunks[r]);
@@ -251,10 +244,11 @@ impl Grid {
 
     pub fn cycle_widget_kind(&mut self, pos: (u16, u16)) {
         let (r, c) = (pos.0 as usize, pos.1 as usize);
-        if r < self.rows as usize && c < self.cols as usize {
-            if let Some(widget) = &mut self.cells[r][c] {
-                widget.kind = widget.kind.cycle();
-            }
+        if r < self.rows as usize
+            && c < self.cols as usize
+            && let Some(widget) = &mut self.cells[r][c]
+        {
+            widget.kind = widget.kind.cycle();
         }
     }
 }
@@ -313,7 +307,13 @@ fn render_empty_cell(f: &mut Frame, area: Rect, theme: &Theme, is_selected: bool
     f.render_widget(block, area);
 }
 
-fn render_status_bar(f: &mut Frame, area: Rect, edit_state: &EditState, grid: &Grid, theme: &Theme) {
+fn render_status_bar(
+    f: &mut Frame,
+    area: Rect,
+    edit_state: &EditState,
+    grid: &Grid,
+    theme: &Theme,
+) {
     let dirty_flag = if edit_state.dirty { " [modified]" } else { "" };
 
     let left = format!(" EDIT{}", dirty_flag);
@@ -328,9 +328,13 @@ fn render_status_bar(f: &mut Frame, area: Rect, edit_state: &EditState, grid: &G
     let available_for_center = total_width.saturating_sub(left_len + right_len);
     let center_padding = available_for_center.saturating_sub(center_len) / 2;
 
-    let mut line_spans = vec![
-        Span::styled(left, Style::default().fg(Color::Black).bg(theme.edit_selected).add_modifier(Modifier::BOLD)),
-    ];
+    let mut line_spans = vec![Span::styled(
+        left,
+        Style::default()
+            .fg(Color::Black)
+            .bg(theme.edit_selected)
+            .add_modifier(Modifier::BOLD),
+    )];
 
     let pad = " ".repeat(center_padding);
     line_spans.push(Span::styled(
@@ -339,13 +343,16 @@ fn render_status_bar(f: &mut Frame, area: Rect, edit_state: &EditState, grid: &G
     ));
 
     // Right-align grid dimensions
-    let remaining = total_width.saturating_sub(left_len + center_len + center_padding * 2 + right_len);
+    let remaining =
+        total_width.saturating_sub(left_len + center_len + center_padding * 2 + right_len);
     if remaining > 0 {
         line_spans.push(Span::raw(" ".repeat(remaining)));
     }
     line_spans.push(Span::styled(
         right,
-        Style::default().fg(theme.label_text).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(theme.label_text)
+            .add_modifier(Modifier::BOLD),
     ));
 
     let status_line = Line::from(line_spans);

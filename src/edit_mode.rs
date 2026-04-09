@@ -51,7 +51,7 @@ pub enum Popup {
 pub struct AddWidgetPopup {
     pub step: AddWidgetStep,
     pub search_query: String,
-    pub filtered_zones: Vec<(String, String)>,  // (display, iana_name)
+    pub filtered_zones: Vec<(String, String)>, // (display, iana_name)
     pub list_state: ListState,
     pub selected_timezone: Option<String>,
     pub selected_kind: Option<WidgetKind>,
@@ -72,10 +72,8 @@ impl AddWidgetPopup {
             .iter()
             .map(|tz| tz.name().to_string())
             .collect();
-        let filtered_zones: Vec<(String, String)> = all_zones
-            .iter()
-            .map(|z| (z.clone(), z.clone()))
-            .collect();
+        let filtered_zones: Vec<(String, String)> =
+            all_zones.iter().map(|z| (z.clone(), z.clone())).collect();
         let mut list_state = ListState::default();
         list_state.select(Some(0));
         AddWidgetPopup {
@@ -180,7 +178,7 @@ pub fn handle_edit_key(
         KeyCode::Esc => return EditAction::ExitEditMode,
         KeyCode::Char('q') => return EditAction::Quit,
         KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            return EditAction::Quit
+            return EditAction::Quit;
         }
 
         // Arrow key navigation
@@ -278,140 +276,138 @@ fn handle_popup_key(
     let popup = edit_state.popup.as_mut().unwrap();
 
     match popup {
-        Popup::AddWidget(add_popup) => {
-            match add_popup.step {
-                AddWidgetStep::SearchTimezone => match key.code {
-                    KeyCode::Esc => {
-                        edit_state.popup = None;
-                    }
-                    KeyCode::Enter => {
-                        if let Some(selected_idx) = add_popup.list_state.selected() {
-                            if selected_idx < add_popup.filtered_zones.len() {
-                                add_popup.selected_timezone =
-                                    Some(add_popup.filtered_zones[selected_idx].1.clone());
-                                add_popup.step = AddWidgetStep::PickWidgetType;
-                                add_popup.list_state.select(Some(0));
-                            }
-                        }
-                    }
-                    KeyCode::Up => {
-                        if let Some(sel) = add_popup.list_state.selected() {
-                            if sel > 0 {
-                                add_popup.list_state.select(Some(sel - 1));
-                            }
-                        }
-                    }
-                    KeyCode::Down => {
-                        if let Some(sel) = add_popup.list_state.selected() {
-                            if sel + 1 < add_popup.filtered_zones.len() {
-                                add_popup.list_state.select(Some(sel + 1));
-                            }
-                        }
-                    }
-                    KeyCode::Char(c) => {
-                        add_popup.search_query.push(c);
-                        add_popup.update_filter();
-                    }
-                    KeyCode::Backspace => {
-                        add_popup.search_query.pop();
-                        add_popup.update_filter();
-                    }
-                    _ => {}
-                },
-                AddWidgetStep::PickWidgetType => match key.code {
-                    KeyCode::Esc => {
-                        add_popup.step = AddWidgetStep::SearchTimezone;
-                    }
-                    KeyCode::Enter => {
-                        if let Some(selected_idx) = add_popup.list_state.selected() {
-                            let kinds = WidgetKind::all();
-                            if selected_idx < kinds.len() {
-                                add_popup.selected_kind = Some(kinds[selected_idx].clone());
-                                add_popup.step = AddWidgetStep::EditLabel;
-                                add_popup.list_state.select(Some(0));
-                                if let Some(ref tz) = add_popup.selected_timezone {
-                                    add_popup.label_input = tz.clone();
-                                }
-                            }
-                        }
-                    }
-                    KeyCode::Up => {
-                        if let Some(sel) = add_popup.list_state.selected() {
-                            if sel > 0 {
-                                add_popup.list_state.select(Some(sel - 1));
-                            }
-                        }
-                    }
-                    KeyCode::Down => {
-                        if let Some(sel) = add_popup.list_state.selected() {
-                            let kinds = WidgetKind::all();
-                            if sel + 1 < kinds.len() {
-                                add_popup.list_state.select(Some(sel + 1));
-                            }
-                        }
-                    }
-                    _ => {}
-                },
-                AddWidgetStep::EditLabel => match key.code {
-                    KeyCode::Esc => {
+        Popup::AddWidget(add_popup) => match add_popup.step {
+            AddWidgetStep::SearchTimezone => match key.code {
+                KeyCode::Esc => {
+                    edit_state.popup = None;
+                }
+                KeyCode::Enter => {
+                    if let Some(selected_idx) = add_popup.list_state.selected()
+                        && selected_idx < add_popup.filtered_zones.len()
+                    {
+                        add_popup.selected_timezone =
+                            Some(add_popup.filtered_zones[selected_idx].1.clone());
                         add_popup.step = AddWidgetStep::PickWidgetType;
+                        add_popup.list_state.select(Some(0));
                     }
-                    KeyCode::Enter => {
-                        if let Some(ref tz_name) = add_popup.selected_timezone {
-                            if let Ok(tz) = tz_name.parse::<Tz>() {
-                                let kind = add_popup
-                                    .selected_kind
-                                    .clone()
-                                    .unwrap_or(WidgetKind::TimeAndDate);
-                                let label = if add_popup.label_input.is_empty() {
-                                    None
-                                } else {
-                                    Some(add_popup.label_input.clone())
-                                };
-                                let widget = ClockWidget::new(tz_name, tz, kind, label);
-                                grid.set_cell(edit_state.selected, widget);
-                                edit_state.dirty = true;
+                }
+                KeyCode::Up => {
+                    if let Some(sel) = add_popup.list_state.selected()
+                        && sel > 0
+                    {
+                        add_popup.list_state.select(Some(sel - 1));
+                    }
+                }
+                KeyCode::Down => {
+                    if let Some(sel) = add_popup.list_state.selected()
+                        && sel + 1 < add_popup.filtered_zones.len()
+                    {
+                        add_popup.list_state.select(Some(sel + 1));
+                    }
+                }
+                KeyCode::Char(c) => {
+                    add_popup.search_query.push(c);
+                    add_popup.update_filter();
+                }
+                KeyCode::Backspace => {
+                    add_popup.search_query.pop();
+                    add_popup.update_filter();
+                }
+                _ => {}
+            },
+            AddWidgetStep::PickWidgetType => match key.code {
+                KeyCode::Esc => {
+                    add_popup.step = AddWidgetStep::SearchTimezone;
+                }
+                KeyCode::Enter => {
+                    if let Some(selected_idx) = add_popup.list_state.selected() {
+                        let kinds = WidgetKind::all();
+                        if selected_idx < kinds.len() {
+                            add_popup.selected_kind = Some(kinds[selected_idx].clone());
+                            add_popup.step = AddWidgetStep::EditLabel;
+                            add_popup.list_state.select(Some(0));
+                            if let Some(ref tz) = add_popup.selected_timezone {
+                                add_popup.label_input = tz.clone();
                             }
                         }
-                        edit_state.popup = None;
                     }
-                    KeyCode::Char(c) => {
-                        add_popup.label_input.push(c);
+                }
+                KeyCode::Up => {
+                    if let Some(sel) = add_popup.list_state.selected()
+                        && sel > 0
+                    {
+                        add_popup.list_state.select(Some(sel - 1));
                     }
-                    KeyCode::Backspace => {
-                        add_popup.label_input.pop();
+                }
+                KeyCode::Down => {
+                    if let Some(sel) = add_popup.list_state.selected() {
+                        let kinds = WidgetKind::all();
+                        if sel + 1 < kinds.len() {
+                            add_popup.list_state.select(Some(sel + 1));
+                        }
                     }
-                    _ => {}
-                },
-            }
-        }
+                }
+                _ => {}
+            },
+            AddWidgetStep::EditLabel => match key.code {
+                KeyCode::Esc => {
+                    add_popup.step = AddWidgetStep::PickWidgetType;
+                }
+                KeyCode::Enter => {
+                    if let Some(ref tz_name) = add_popup.selected_timezone
+                        && let Ok(tz) = tz_name.parse::<Tz>()
+                    {
+                        let kind = add_popup
+                            .selected_kind
+                            .clone()
+                            .unwrap_or(WidgetKind::TimeAndDate);
+                        let label = if add_popup.label_input.is_empty() {
+                            None
+                        } else {
+                            Some(add_popup.label_input.clone())
+                        };
+                        let widget = ClockWidget::new(tz_name, tz, kind, label);
+                        grid.set_cell(edit_state.selected, widget);
+                        edit_state.dirty = true;
+                    }
+                    edit_state.popup = None;
+                }
+                KeyCode::Char(c) => {
+                    add_popup.label_input.push(c);
+                }
+                KeyCode::Backspace => {
+                    add_popup.label_input.pop();
+                }
+                _ => {}
+            },
+        },
         Popup::ThemePicker(picker) => match key.code {
             KeyCode::Esc => {
                 edit_state.popup = None;
             }
             KeyCode::Enter => {
-                if let Some(sel) = picker.list_state.selected() {
-                    if sel < picker.themes.len() {
-                        let theme_name = &picker.themes[sel];
-                        *theme = Theme::from_name(theme_name);
-                        config.theme = theme_name.clone();
-                        edit_state.dirty = true;
-                    }
+                if let Some(sel) = picker.list_state.selected()
+                    && sel < picker.themes.len()
+                {
+                    let theme_name = &picker.themes[sel];
+                    *theme = Theme::from_name(theme_name);
+                    config.theme = theme_name.clone();
+                    edit_state.dirty = true;
                 }
                 edit_state.popup = None;
             }
             KeyCode::Up => {
-                if let Some(sel) = picker.list_state.selected() {
-                    if sel > 0 {
-                        picker.list_state.select(Some(sel - 1));
-                    }
+                if let Some(sel) = picker.list_state.selected()
+                    && sel > 0
+                {
+                    picker.list_state.select(Some(sel - 1));
                 }
             }
             KeyCode::Down => {
-                if let Some(sel) = picker.list_state.selected() {
-                    if sel + 1 < picker.themes.len() {
-                        picker.list_state.select(Some(sel + 1));
-                    }
+                if let Some(sel) = picker.list_state.selected()
+                    && sel + 1 < picker.themes.len()
+                {
+                    picker.list_state.select(Some(sel + 1));
                 }
             }
             _ => {}
@@ -435,14 +431,13 @@ pub fn handle_edit_mouse(
             }
         }
         MouseEventKind::Up(MouseButton::Left) => {
-            if let DragState::Dragging { source } = edit_state.drag {
-                if let Some(target) = hit_test(mouse.column, mouse.row, cell_rects) {
-                    if source != target {
-                        grid.swap_cells(source, target);
-                        edit_state.selected = target;
-                        edit_state.dirty = true;
-                    }
-                }
+            if let DragState::Dragging { source } = edit_state.drag
+                && let Some(target) = hit_test(mouse.column, mouse.row, cell_rects)
+                && source != target
+            {
+                grid.swap_cells(source, target);
+                edit_state.selected = target;
+                edit_state.dirty = true;
             }
             edit_state.drag = DragState::Idle;
         }
@@ -492,18 +487,17 @@ pub fn render_popup(f: &mut Frame, popup: &mut Popup, theme: &Theme) {
     }
 }
 
-fn render_add_widget_popup(
-    f: &mut Frame,
-    area: Rect,
-    popup: &mut AddWidgetPopup,
-    theme: &Theme,
-) {
+fn render_add_widget_popup(f: &mut Frame, area: Rect, popup: &mut AddWidgetPopup, theme: &Theme) {
     match popup.step {
         AddWidgetStep::SearchTimezone => {
             let block = Block::default()
                 .borders(Borders::ALL)
                 .title(" Add Clock ")
-                .title_style(Style::default().fg(theme.title).add_modifier(Modifier::BOLD))
+                .title_style(
+                    Style::default()
+                        .fg(theme.title)
+                        .add_modifier(Modifier::BOLD),
+                )
                 .border_style(Style::default().fg(theme.border));
 
             let inner = block.inner(area);
@@ -559,7 +553,11 @@ fn render_add_widget_popup(
             let block = Block::default()
                 .borders(Borders::ALL)
                 .title(" Widget Type ")
-                .title_style(Style::default().fg(theme.title).add_modifier(Modifier::BOLD))
+                .title_style(
+                    Style::default()
+                        .fg(theme.title)
+                        .add_modifier(Modifier::BOLD),
+                )
                 .border_style(Style::default().fg(theme.border));
 
             let inner = block.inner(area);
@@ -614,7 +612,11 @@ fn render_add_widget_popup(
             let block = Block::default()
                 .borders(Borders::ALL)
                 .title(" Label ")
-                .title_style(Style::default().fg(theme.title).add_modifier(Modifier::BOLD))
+                .title_style(
+                    Style::default()
+                        .fg(theme.title)
+                        .add_modifier(Modifier::BOLD),
+                )
                 .border_style(Style::default().fg(theme.border));
 
             let inner = block.inner(area);
@@ -672,7 +674,11 @@ fn render_theme_picker_popup(
     let block = Block::default()
         .borders(Borders::ALL)
         .title(" Theme ")
-        .title_style(Style::default().fg(theme.title).add_modifier(Modifier::BOLD))
+        .title_style(
+            Style::default()
+                .fg(theme.title)
+                .add_modifier(Modifier::BOLD),
+        )
         .border_style(Style::default().fg(theme.border));
 
     let inner = block.inner(area);
@@ -690,9 +696,7 @@ fn render_theme_picker_popup(
     let items: Vec<ListItem> = picker
         .themes
         .iter()
-        .map(|t| {
-            ListItem::new(format!("  {}", t)).style(Style::default().fg(theme.date_text))
-        })
+        .map(|t| ListItem::new(format!("  {}", t)).style(Style::default().fg(theme.date_text)))
         .collect();
 
     let list = List::new(items)

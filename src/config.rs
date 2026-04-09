@@ -3,18 +3,13 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum WidgetKind {
     TimeOnly,
     DateOnly,
+    #[default]
     TimeAndDate,
-}
-
-impl Default for WidgetKind {
-    fn default() -> Self {
-        WidgetKind::TimeAndDate
-    }
 }
 
 impl WidgetKind {
@@ -35,22 +30,20 @@ impl WidgetKind {
     }
 
     pub fn all() -> &'static [WidgetKind] {
-        &[WidgetKind::TimeAndDate, WidgetKind::TimeOnly, WidgetKind::DateOnly]
+        &[
+            WidgetKind::TimeAndDate,
+            WidgetKind::TimeOnly,
+            WidgetKind::DateOnly,
+        ]
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GridConfig {
     #[serde(default)]
     pub rows: u16,
     #[serde(default)]
     pub cols: u16,
-}
-
-impl Default for GridConfig {
-    fn default() -> Self {
-        GridConfig { rows: 0, cols: 0 }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -111,6 +104,10 @@ pub fn config_path(custom: Option<&str>) -> PathBuf {
 }
 
 pub fn load_config(custom_path: Option<&str>) -> AppConfig {
+    if custom_path.is_none() {
+        write_default_config();
+    }
+
     let path = config_path(custom_path);
     if path.exists() {
         match fs::read_to_string(&path) {

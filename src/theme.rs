@@ -35,20 +35,55 @@ impl Theme {
     pub fn from_custom(config: &CustomThemeConfig) -> Self {
         let base = Self::default_theme();
         Theme {
-            background: config.background.as_deref().map(parse_color).unwrap_or(base.background),
-            border: config.border.as_deref().map(parse_color).unwrap_or(base.border),
-            border_alarm: config.border_alarm.as_deref().map(parse_color).unwrap_or(base.border_alarm),
-            title: config.title.as_deref().map(parse_color).unwrap_or(base.title),
-            time_text: config.time_text.as_deref().map(parse_color).unwrap_or(base.time_text),
-            date_text: config.date_text.as_deref().map(parse_color).unwrap_or(base.date_text),
-            label_text: config.label_text.as_deref().map(parse_color).unwrap_or(base.label_text),
+            background: config
+                .background
+                .as_deref()
+                .map(parse_color)
+                .unwrap_or(base.background),
+            border: config
+                .border
+                .as_deref()
+                .map(parse_color)
+                .unwrap_or(base.border),
+            border_alarm: config
+                .border_alarm
+                .as_deref()
+                .map(parse_color)
+                .unwrap_or(base.border_alarm),
+            title: config
+                .title
+                .as_deref()
+                .map(parse_color)
+                .unwrap_or(base.title),
+            time_text: config
+                .time_text
+                .as_deref()
+                .map(parse_color)
+                .unwrap_or(base.time_text),
+            date_text: config
+                .date_text
+                .as_deref()
+                .map(parse_color)
+                .unwrap_or(base.date_text),
+            label_text: config
+                .label_text
+                .as_deref()
+                .map(parse_color)
+                .unwrap_or(base.label_text),
             edit_selected: base.edit_selected,
             edit_empty: base.edit_empty,
         }
     }
 
     pub fn available_themes() -> &'static [&'static str] {
-        &["default", "dracula", "nord", "solarized_dark", "gruvbox", "monokai"]
+        &[
+            "default",
+            "dracula",
+            "nord",
+            "solarized_dark",
+            "gruvbox",
+            "monokai",
+        ]
     }
 
     fn default_theme() -> Self {
@@ -137,16 +172,15 @@ impl Theme {
 }
 
 pub fn parse_color(s: &str) -> Color {
-    if let Some(hex) = s.strip_prefix('#') {
-        if hex.len() == 6 {
-            if let (Ok(r), Ok(g), Ok(b)) = (
-                u8::from_str_radix(&hex[0..2], 16),
-                u8::from_str_radix(&hex[2..4], 16),
-                u8::from_str_radix(&hex[4..6], 16),
-            ) {
-                return Color::Rgb(r, g, b);
-            }
-        }
+    if let Some(hex) = s.strip_prefix('#')
+        && hex.len() == 6
+        && let (Ok(r), Ok(g), Ok(b)) = (
+            u8::from_str_radix(&hex[0..2], 16),
+            u8::from_str_radix(&hex[2..4], 16),
+            u8::from_str_radix(&hex[4..6], 16),
+        )
+    {
+        return Color::Rgb(r, g, b);
     }
     match s.to_lowercase().as_str() {
         "black" => Color::Black,

@@ -105,7 +105,12 @@ impl ClockWidget {
         };
 
         let (border_type, title_style) = if is_selected {
-            (BorderType::Double, Style::default().fg(theme.edit_selected).add_modifier(Modifier::BOLD))
+            (
+                BorderType::Double,
+                Style::default()
+                    .fg(theme.edit_selected)
+                    .add_modifier(Modifier::BOLD),
+            )
         } else {
             (BorderType::Plain, Style::default().fg(theme.title))
         };
