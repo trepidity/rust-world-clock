@@ -1,19 +1,31 @@
 use crate::Clock;
 use chrono::{Local, NaiveTime, Timelike, Utc};
 use iced::{
-    Alignment, Application, Color, Command, Element, Length, Settings, Subscription, Theme,
-    executor,
+    Color, Element, Fill, Subscription, Task, Theme, application, border,
     widget::{column, container, row, text},
 };
 use std::time::Duration;
 
 pub fn run(clocks: Vec<Clock>, alarms: Vec<NaiveTime>) -> iced::Result {
-    WorldClockApp::run(Settings {
-        flags: (clocks, alarms),
-        ..Settings::default()
-    })
+    let initial = WorldClockApp {
+        clocks,
+        alarms,
+        local_time: Local::now().time(),
+    };
+
+    application(
+        move || (initial.clone(), Task::none()),
+        update,
+        view,
+    )
+    .title(app_title)
+    .theme(app_theme)
+    .subscription(subscription)
+    .centered()
+    .run()
 }
 
+#[derive(Clone)]
 struct WorldClockApp {
     clocks: Vec<Clock>,
     alarms: Vec<NaiveTime>,
@@ -25,101 +37,76 @@ enum Message {
     Tick(NaiveTime),
 }
 
-impl Application for WorldClockApp {
-    type Executor = executor::Default;
-    type Message = Message;
-    type Theme = Theme;
-    type Flags = (Vec<Clock>, Vec<NaiveTime>);
-
-    fn new(flags: Self::Flags) -> (Self, Command<Self::Message>) {
-        (
-            WorldClockApp {
-                clocks: flags.0,
-                alarms: flags.1,
-                local_time: Local::now().time(),
-            },
-            Command::none(),
-        )
-    }
-
-    fn title(&self) -> String {
-        String::from("Rust World Clock")
-    }
-
-    fn update(&mut self, message: Message) -> Command<Message> {
-        match message {
-            Message::Tick(time) => {
-                self.local_time = time;
-            }
+fn update(app: &mut WorldClockApp, message: Message) {
+    match message {
+        Message::Tick(time) => {
+            app.local_time = time;
         }
-        Command::none()
-    }
-
-    fn view(&self) -> Element<'_, Message> {
-        let is_alarm_active = self.alarms.iter().any(|&alarm| {
-            self.local_time.hour() == alarm.hour() && self.local_time.minute() == alarm.minute()
-        });
-
-        let clock_content = self.clocks.iter().map(|clock| {
-            let time = Utc::now().with_timezone(&clock.timezone);
-            let time_str = time.format("%H:%M:%S").to_string();
-            let date_str = time.format("%Y-%m-%d").to_string();
-
-            container(
-                column![
-                    text(&clock.name)
-                        .size(24)
-                        .style(Color::from_rgb(1.0, 1.0, 0.0)), // Yellow-ish
-                    text(time_str)
-                        .size(72)
-                        .style(Color::from_rgb(0.0, 1.0, 1.0)), // Cyan-ish
-                    text(date_str)
-                        .size(28)
-                        .style(Color::from_rgb(0.5, 0.5, 0.5)), // Gray
-                ]
-                .align_items(Alignment::Center)
-                .spacing(10),
-            )
-            .padding(20)
-            .style(if is_alarm_active {
-                // simple hack: generic theme style doesn't easily support custom borders without boilerplate
-                // so we just use a different "built-in" usage if possible, or just ignore red border for now
-                // to make it compile.
-                // But wait, we can wrap it in ANOTHER container with a red background to simulate a border?
-                // Or just use `iced::theme::Container::Box`
-                iced::theme::Container::Box
-            } else {
-                iced::theme::Container::Transparent
-            })
-            .into()
-        });
-
-        let content = row(clock_content)
-            .spacing(20)
-            .padding(20)
-            .align_items(Alignment::Center);
-
-        container(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x()
-            .center_y()
-            .style(iced::theme::Container::Custom(Box::new(DarkBackground)))
-            .into()
-    }
-    fn subscription(&self) -> Subscription<Message> {
-        iced::time::every(Duration::from_millis(500)).map(|_| Message::Tick(Local::now().time()))
     }
 }
 
-struct DarkBackground;
-impl container::StyleSheet for DarkBackground {
-    type Style = Theme;
-    fn appearance(&self, _style: &Self::Style) -> container::Appearance {
-        container::Appearance {
-            background: Some(Color::BLACK.into()),
+fn subscription(_app: &WorldClockApp) -> Subscription<Message> {
+    iced::time::every(Duration::from_millis(500)).map(|_| Message::Tick(Local::now().time()))
+}
+
+fn app_title(_app: &WorldClockApp) -> String {
+    String::from("Rust World Clock")
+}
+
+fn app_theme(_app: &WorldClockApp) -> Theme {
+    Theme::Dark
+}
+
+fn view(app: &WorldClockApp) -> Element<'_, Message> {
+    let is_alarm_active = app.alarms.iter().any(|&alarm| {
+        app.local_time.hour() == alarm.hour() && app.local_time.minute() == alarm.minute()
+    });
+
+    let content = app.clocks.iter().fold(
+        row!().spacing(20).padding(20),
+        |row, clock| row.push(clock_card(clock, is_alarm_active)),
+    );
+
+    container(content)
+        .width(Fill)
+        .height(Fill)
+        .center(Fill)
+        .style(|_| {
+            container::Style::default()
+                .background(Color::BLACK)
+                .color(Color::WHITE)
+        })
+        .into()
+}
+
+fn clock_card(clock: &Clock, is_alarm_active: bool) -> Element<'static, Message> {
+    let time = Utc::now().with_timezone(&clock.timezone);
+    let time_str = time.format("%H:%M:%S").to_string();
+    let date_str = time.format("%Y-%m-%d").to_string();
+
+    container(
+        column![
+            text(clock.name.clone()).size(24),
+            text(time_str).size(72),
+            text(date_str).size(28),
+        ]
+        .spacing(10)
+        .align_x(iced::alignment::Horizontal::Center),
+    )
+    .padding(20)
+    .style(move |_| {
+        let border_color = if is_alarm_active {
+            Color::from_rgb(1.0, 0.25, 0.25)
+        } else {
+            Color::from_rgb(0.35, 0.35, 0.35)
+        };
+
+        container::Style {
+            background: Some(Color::from_rgb(0.08, 0.08, 0.08).into()),
             text_color: Some(Color::WHITE),
-            ..Default::default()
+            border: border::rounded(10).width(2).color(border_color),
+            ..container::Style::default()
         }
-    }
+    })
+    .into()
 }
