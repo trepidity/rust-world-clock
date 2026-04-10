@@ -159,6 +159,7 @@ The full grid layout is configured via TOML at `config.toml` in your config dire
 
 ```toml
 theme = "dracula"
+always_on_top = true
 
 [grid]
 rows = 2
@@ -187,6 +188,8 @@ label = "Tokyo"
 ```
 
 Widget types: `time_and_date`, `time_only`, `date_only`
+
+Set `always_on_top = false` if you want the GUI window to behave like a normal window instead of staying above other apps.
 
 ## License
 

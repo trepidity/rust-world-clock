@@ -7,7 +7,7 @@ use iced::{
 };
 use std::time::Duration;
 
-pub fn run(clocks: Vec<Clock>, alarms: Vec<NaiveTime>) -> iced::Result {
+pub fn run(clocks: Vec<Clock>, alarms: Vec<NaiveTime>, always_on_top: bool) -> iced::Result {
     let initial = WorldClockApp {
         clocks,
         alarms,
@@ -17,14 +17,19 @@ pub fn run(clocks: Vec<Clock>, alarms: Vec<NaiveTime>) -> iced::Result {
     application(move || (initial.clone(), Task::none()), update, view)
         .title(app_title)
         .theme(app_theme)
-        .window(app_window_settings())
+        .window(app_window_settings(always_on_top))
         .subscription(subscription)
         .centered()
         .run()
 }
 
-fn app_window_settings() -> window::Settings {
+fn app_window_settings(always_on_top: bool) -> window::Settings {
     window::Settings {
+        level: if always_on_top {
+            window::Level::AlwaysOnTop
+        } else {
+            window::Level::Normal
+        },
         icon: app_icon(),
         ..window::Settings::default()
     }

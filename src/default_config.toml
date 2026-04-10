@@ -3,6 +3,9 @@
 # Theme: one of "default", "dracula", "nord", "solarized_dark", "gruvbox", "monokai"
 # theme = "default"
 
+# Keep the GUI window above normal windows by default
+# always_on_top = true
+
 # Grid dimensions (0 = auto-calculate from clock count)
 # [grid]
 # rows = 0

@@ -71,6 +71,8 @@ pub struct CustomThemeConfig {
 pub struct AppConfig {
     #[serde(default = "default_theme")]
     pub theme: String,
+    #[serde(default = "default_always_on_top")]
+    pub always_on_top: bool,
     #[serde(default)]
     pub grid: GridConfig,
     #[serde(default)]
@@ -82,10 +84,15 @@ fn default_theme() -> String {
     "default".to_string()
 }
 
+fn default_always_on_top() -> bool {
+    true
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         AppConfig {
             theme: default_theme(),
+            always_on_top: default_always_on_top(),
             grid: GridConfig::default(),
             cells: Vec::new(),
             custom_theme: None,

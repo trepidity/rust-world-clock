@@ -205,7 +205,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if args.gui {
-        gui::run(clocks, alarms)?;
+        gui::run(clocks, alarms, app_config.always_on_top)?;
     } else {
         tui::run(&clocks, &alarms, app_config)?;
     }
