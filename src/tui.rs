@@ -131,17 +131,15 @@ where
                             {
                                 return Ok(());
                             }
-                            KeyCode::Char(' ') | KeyCode::Char('d') => {
-                                if is_alarm_active {
-                                    dismissed_time = Some(
-                                        NaiveTime::from_hms_opt(
-                                            local_now.hour(),
-                                            local_now.minute(),
-                                            0,
-                                        )
-                                        .unwrap(),
-                                    );
-                                }
+                            KeyCode::Char(' ') | KeyCode::Char('d') if is_alarm_active => {
+                                dismissed_time = Some(
+                                    NaiveTime::from_hms_opt(
+                                        local_now.hour(),
+                                        local_now.minute(),
+                                        0,
+                                    )
+                                    .unwrap(),
+                                );
                             }
                             KeyCode::Char('e') => {
                                 mode = AppMode::Edit(EditState::new());
@@ -151,29 +149,25 @@ where
                     }
                 }
                 AppMode::Edit(edit_state) => match ev {
-                    Event::Key(key) => {
-                        if key.kind == KeyEventKind::Press {
-                            match edit_mode::handle_edit_key(
-                                key,
-                                edit_state,
-                                &mut grid,
-                                &mut theme,
-                                &mut config,
-                            ) {
-                                EditAction::ExitEditMode => {
-                                    mode = AppMode::Normal;
-                                }
-                                EditAction::Quit => return Ok(()),
-                                EditAction::None => {}
+                    Event::Key(key) if key.kind == KeyEventKind::Press => {
+                        match edit_mode::handle_edit_key(
+                            key,
+                            edit_state,
+                            &mut grid,
+                            &mut theme,
+                            &mut config,
+                        ) {
+                            EditAction::ExitEditMode => {
+                                mode = AppMode::Normal;
                             }
+                            EditAction::Quit => return Ok(()),
+                            EditAction::None => {}
                         }
                     }
-                    Event::Mouse(mouse) => {
-                        if edit_state.popup.is_none() {
-                            let area = terminal.get_frame().area();
-                            let cell_rects = grid.cell_rects(area);
-                            edit_mode::handle_edit_mouse(mouse, edit_state, &mut grid, &cell_rects);
-                        }
+                    Event::Mouse(mouse) if edit_state.popup.is_none() => {
+                        let area = terminal.get_frame().area();
+                        let cell_rects = grid.cell_rects(area);
+                        edit_mode::handle_edit_mouse(mouse, edit_state, &mut grid, &cell_rects);
                     }
                     _ => {}
                 },

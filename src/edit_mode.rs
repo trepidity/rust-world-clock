@@ -182,25 +182,17 @@ pub fn handle_edit_key(
         }
 
         // Arrow key navigation
-        KeyCode::Up => {
-            if edit_state.selected.0 > 0 {
-                edit_state.selected.0 -= 1;
-            }
+        KeyCode::Up if edit_state.selected.0 > 0 => {
+            edit_state.selected.0 -= 1;
         }
-        KeyCode::Down => {
-            if edit_state.selected.0 < grid.rows - 1 {
-                edit_state.selected.0 += 1;
-            }
+        KeyCode::Down if edit_state.selected.0 < grid.rows - 1 => {
+            edit_state.selected.0 += 1;
         }
-        KeyCode::Left => {
-            if edit_state.selected.1 > 0 {
-                edit_state.selected.1 -= 1;
-            }
+        KeyCode::Left if edit_state.selected.1 > 0 => {
+            edit_state.selected.1 -= 1;
         }
-        KeyCode::Right => {
-            if edit_state.selected.1 < grid.cols - 1 {
-                edit_state.selected.1 += 1;
-            }
+        KeyCode::Right if edit_state.selected.1 < grid.cols - 1 => {
+            edit_state.selected.1 += 1;
         }
 
         // Add widget
