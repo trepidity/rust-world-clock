@@ -1,7 +1,9 @@
 use crate::Clock;
 use chrono::{Local, NaiveTime, Timelike, Utc};
+use chrono_tz::Tz;
 use iced::{
-    Color, Element, Fill, Font, Subscription, Task, Theme, application, border,
+    Background, Border, Color, Element, Fill, Font, Shadow, Subscription, Task, Theme, Vector,
+    application, border,
     widget::{column, container, row, text},
     window,
 };
@@ -11,6 +13,7 @@ pub fn run(clocks: Vec<Clock>, alarms: Vec<NaiveTime>, always_on_top: bool) -> i
     let initial = WorldClockApp {
         clocks,
         alarms,
+        home_timezone: detect_home_timezone(),
         local_time: Local::now().time(),
     };
 
@@ -264,6 +267,7 @@ fn lerp_channel(a: u8, b: u8, t: f32) -> u8 {
 struct WorldClockApp {
     clocks: Vec<Clock>,
     alarms: Vec<NaiveTime>,
+    home_timezone: Option<Tz>,
     local_time: NaiveTime,
 }
 
@@ -299,7 +303,14 @@ fn view(app: &WorldClockApp) -> Element<'_, Message> {
 
     let content = app.clocks.iter().fold(
         row!().spacing(20).padding(20).width(Fill).height(Fill),
-        |row, clock| row.push(clock_card(clock, is_alarm_active)),
+        |row, clock| {
+            let is_home_timezone = app
+                .home_timezone
+                .as_ref()
+                .is_some_and(|home_timezone| clock.timezone == *home_timezone);
+
+            row.push(clock_card(clock, is_alarm_active, is_home_timezone))
+        },
     );
 
     container(content)
@@ -314,37 +325,163 @@ fn view(app: &WorldClockApp) -> Element<'_, Message> {
         .into()
 }
 
-fn clock_card(clock: &Clock, is_alarm_active: bool) -> Element<'static, Message> {
+fn clock_card(
+    clock: &Clock,
+    is_alarm_active: bool,
+    is_home_timezone: bool,
+) -> Element<'static, Message> {
     let time = Utc::now().with_timezone(&clock.timezone);
     let time_str = time.format("%H:%M:%S").to_string();
     let date_str = time.format("%Y-%m-%d").to_string();
+    let home_style = HomeCardStyle::new(is_home_timezone, is_alarm_active);
 
     container(
         column![
-            text(clock.name.clone()).size(24),
-            text(time_str).size(72).font(Font::MONOSPACE),
-            text(date_str).size(28).font(Font::MONOSPACE),
+            home_accent_bar(is_home_timezone),
+            row![
+                text(clock.name.clone())
+                    .size(24)
+                    .color(home_style.title_color),
+                home_badge(is_home_timezone)
+            ]
+            .spacing(10),
+            text(time_str)
+                .size(72)
+                .font(Font::MONOSPACE)
+                .color(home_style.time_color),
+            text(date_str)
+                .size(28)
+                .font(Font::MONOSPACE)
+                .color(home_style.date_color),
         ]
-        .spacing(10)
+        .spacing(if is_home_timezone { 14 } else { 10 })
         .width(Fill)
         .height(Fill)
         .align_x(iced::alignment::Horizontal::Center),
     )
     .width(Fill)
     .padding(20)
-    .style(move |_| {
-        let border_color = if is_alarm_active {
-            Color::from_rgb(1.0, 0.25, 0.25)
-        } else {
-            Color::from_rgb(0.35, 0.35, 0.35)
-        };
-
-        container::Style {
-            background: Some(Color::from_rgb(0.08, 0.08, 0.08).into()),
-            text_color: Some(Color::WHITE),
-            border: border::rounded(10).width(2).color(border_color),
-            ..container::Style::default()
-        }
+    .style(move |_| container::Style {
+        background: Some(home_style.background.into()),
+        text_color: Some(Color::WHITE),
+        border: border::rounded(if is_home_timezone { 16 } else { 10 })
+            .width(if is_home_timezone { 4 } else { 2 })
+            .color(home_style.border_color),
+        shadow: home_style.shadow,
+        ..container::Style::default()
     })
     .into()
+}
+
+fn detect_home_timezone() -> Option<Tz> {
+    let timezone_name = iana_time_zone::get_timezone().ok()?;
+
+    timezone_name.parse::<Tz>().ok()
+}
+
+fn home_accent_bar(is_home_timezone: bool) -> Element<'static, Message> {
+    if !is_home_timezone {
+        return container(column![]).height(0).into();
+    }
+
+    row![
+        accent_segment(rgb8(249, 115, 22)),
+        accent_segment(rgb8(236, 72, 153)),
+        accent_segment(rgb8(34, 211, 238)),
+    ]
+    .spacing(0)
+    .width(Fill)
+    .into()
+}
+
+fn accent_segment(color: Color) -> Element<'static, Message> {
+    container(column![])
+        .width(Fill)
+        .height(8)
+        .style(move |_| container::Style {
+            background: Some(Background::Color(color)),
+            border: Border::default(),
+            shadow: Shadow::default(),
+            text_color: None,
+            snap: false,
+        })
+        .into()
+}
+
+fn home_badge(is_home_timezone: bool) -> Element<'static, Message> {
+    if !is_home_timezone {
+        return container(column![]).width(0).into();
+    }
+
+    container(
+        text("HOME")
+            .size(14)
+            .font(Font::MONOSPACE)
+            .color(rgb8(12, 18, 28)),
+    )
+    .padding([4, 10])
+    .style(|_| {
+        container::Style::default()
+            .background(rgb8(251, 191, 36))
+            .border(border::rounded(999))
+    })
+    .into()
+}
+
+#[derive(Clone, Copy)]
+struct HomeCardStyle {
+    background: Color,
+    border_color: Color,
+    title_color: Color,
+    time_color: Color,
+    date_color: Color,
+    shadow: Shadow,
+}
+
+impl HomeCardStyle {
+    fn new(is_home_timezone: bool, is_alarm_active: bool) -> Self {
+        if is_home_timezone {
+            let border_color = if is_alarm_active {
+                rgb8(248, 113, 113)
+            } else {
+                rgb8(251, 191, 36)
+            };
+
+            return Self {
+                background: rgb8(18, 26, 40),
+                border_color,
+                title_color: rgb8(255, 213, 128),
+                time_color: rgb8(125, 249, 255),
+                date_color: rgb8(244, 114, 182),
+                shadow: Shadow {
+                    color: rgba8(251, 191, 36, 0.28),
+                    offset: Vector::new(0.0, 8.0),
+                    blur_radius: 24.0,
+                },
+            };
+        }
+
+        let border_color = if is_alarm_active {
+            rgb8(255, 64, 64)
+        } else {
+            rgb8(89, 89, 89)
+        };
+
+        Self {
+            background: rgb8(20, 20, 20),
+            border_color,
+            title_color: Color::WHITE,
+            time_color: Color::WHITE,
+            date_color: rgb8(214, 214, 214),
+            shadow: Shadow::default(),
+        }
+    }
+}
+
+fn rgb8(r: u8, g: u8, b: u8) -> Color {
+    Color::from_rgb(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0)
+}
+
+fn rgba8(r: u8, g: u8, b: u8, a: f32) -> Color {
+    Color::from_rgba(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, a)
 }
