@@ -1,10 +1,12 @@
 use crate::Clock;
+use crate::time_conversion::{self, TimeConversion};
 use chrono::{Local, NaiveTime, Timelike, Utc};
 use chrono_tz::Tz;
 use iced::{
     Background, Border, Color, Element, Fill, Font, Shadow, Subscription, Task, Theme, Vector,
-    application, border,
-    widget::{column, container, row, text},
+    application, border, keyboard,
+    keyboard::key::Named,
+    widget::{column, container, row, stack, text, text_input},
     window,
 };
 use std::time::Duration;
@@ -15,6 +17,7 @@ pub fn run(clocks: Vec<Clock>, alarms: Vec<NaiveTime>, always_on_top: bool) -> i
         alarms,
         home_timezone: detect_home_timezone(),
         local_time: Local::now().time(),
+        converter: ConverterState::default(),
     };
 
     application(move || (initial.clone(), Task::none()), update, view)
@@ -269,11 +272,28 @@ struct WorldClockApp {
     alarms: Vec<NaiveTime>,
     home_timezone: Option<Tz>,
     local_time: NaiveTime,
+    converter: ConverterState,
+}
+
+#[derive(Debug, Clone, Default)]
+struct ConverterState {
+    is_open: bool,
+    input: String,
+    outcome: Option<ConverterOutcome>,
+}
+
+#[derive(Debug, Clone)]
+enum ConverterOutcome {
+    Converted(TimeConversion),
+    Error(String),
 }
 
 #[derive(Debug, Clone)]
 enum Message {
     Tick(NaiveTime),
+    Keyboard(keyboard::Event),
+    ConverterInputChanged(String),
+    SubmitConversion,
 }
 
 fn update(app: &mut WorldClockApp, message: Message) {
@@ -281,11 +301,24 @@ fn update(app: &mut WorldClockApp, message: Message) {
         Message::Tick(time) => {
             app.local_time = time;
         }
+        Message::Keyboard(event) => {
+            handle_keyboard(app, event);
+        }
+        Message::ConverterInputChanged(input) => {
+            app.converter.input = input;
+            app.converter.outcome = None;
+        }
+        Message::SubmitConversion => {
+            submit_conversion(app);
+        }
     }
 }
 
 fn subscription(_app: &WorldClockApp) -> Subscription<Message> {
-    iced::time::every(Duration::from_millis(500)).map(|_| Message::Tick(Local::now().time()))
+    Subscription::batch([
+        iced::time::every(Duration::from_millis(500)).map(|_| Message::Tick(Local::now().time())),
+        keyboard::listen().map(Message::Keyboard),
+    ])
 }
 
 fn app_title(_app: &WorldClockApp) -> String {
@@ -313,7 +346,7 @@ fn view(app: &WorldClockApp) -> Element<'_, Message> {
         },
     );
 
-    container(content)
+    let base = container(content)
         .width(Fill)
         .height(Fill)
         .center(Fill)
@@ -321,8 +354,188 @@ fn view(app: &WorldClockApp) -> Element<'_, Message> {
             container::Style::default()
                 .background(Color::BLACK)
                 .color(Color::WHITE)
+        });
+
+    if app.converter.is_open {
+        stack![base, converter_overlay(app)]
+            .width(Fill)
+            .height(Fill)
+            .into()
+    } else {
+        base.into()
+    }
+}
+
+fn converter_overlay(app: &WorldClockApp) -> Element<'_, Message> {
+    let input = text_input(
+        "I can meet at 7AM CT, what time is that in IST",
+        &app.converter.input,
+    )
+    .on_input(Message::ConverterInputChanged)
+    .on_submit(Message::SubmitConversion)
+    .padding(14)
+    .size(22)
+    .width(Fill);
+
+    let mut body = column![
+        text("Time Conversion").size(26).color(rgb8(248, 250, 252)),
+        input,
+    ]
+    .spacing(16);
+
+    if let Some(outcome) = &app.converter.outcome {
+        body = body.push(converter_outcome(outcome));
+    }
+
+    let panel = container(body)
+        .width(Fill)
+        .max_width(760)
+        .padding(24)
+        .style(|_| {
+            container::Style::default()
+                .background(rgb8(16, 24, 39))
+                .color(Color::WHITE)
+                .border(border::rounded(8).width(1).color(rgb8(71, 85, 105)))
+                .shadow(Shadow {
+                    color: rgba8(0, 0, 0, 0.45),
+                    offset: Vector::new(0.0, 12.0),
+                    blur_radius: 32.0,
+                })
+        });
+
+    container(panel)
+        .width(Fill)
+        .height(Fill)
+        .center(Fill)
+        .style(|_| {
+            container::Style::default()
+                .background(rgba8(0, 0, 0, 0.72))
+                .color(Color::WHITE)
         })
         .into()
+}
+
+fn converter_outcome(outcome: &ConverterOutcome) -> Element<'_, Message> {
+    match outcome {
+        ConverterOutcome::Converted(conversion) => {
+            let source = format!(
+                "{} {}",
+                time_conversion::format_time(conversion.source_time),
+                conversion.source_label
+            );
+            let target = format!(
+                "{} {}",
+                time_conversion::format_time(conversion.target_time),
+                conversion.target_label
+            );
+            let route = format!(
+                "{} -> {}",
+                conversion.source_time.timezone().name(),
+                conversion.target_time.timezone().name()
+            );
+            let date = if conversion.source_time.date_naive() == conversion.target_time.date_naive()
+            {
+                conversion.source_time.format("%Y-%m-%d").to_string()
+            } else {
+                format!(
+                    "{} -> {}",
+                    conversion.source_time.format("%Y-%m-%d"),
+                    conversion.target_time.format("%Y-%m-%d")
+                )
+            };
+
+            container(
+                column![
+                    text(format!("{source} = {target}"))
+                        .size(34)
+                        .font(Font::MONOSPACE)
+                        .color(rgb8(125, 249, 255)),
+                    text(format!("{route} on {date}"))
+                        .size(16)
+                        .color(rgb8(203, 213, 225)),
+                ]
+                .spacing(8),
+            )
+            .padding(18)
+            .style(|_| {
+                container::Style::default()
+                    .background(rgb8(7, 24, 36))
+                    .border(border::rounded(8).width(1).color(rgb8(34, 211, 238)))
+            })
+            .into()
+        }
+        ConverterOutcome::Error(error) => {
+            container(text(error.clone()).size(18).color(rgb8(248, 113, 113)))
+                .padding(18)
+                .style(|_| {
+                    container::Style::default()
+                        .background(rgb8(45, 17, 24))
+                        .border(border::rounded(8).width(1).color(rgb8(248, 113, 113)))
+                })
+                .into()
+        }
+    }
+}
+
+fn handle_keyboard(app: &mut WorldClockApp, event: keyboard::Event) {
+    let keyboard::Event::KeyPressed {
+        key,
+        modifiers,
+        text,
+        ..
+    } = event
+    else {
+        return;
+    };
+
+    if modifiers.command() && is_key(&key, "k") {
+        open_converter(app);
+        return;
+    }
+
+    if !app.converter.is_open {
+        return;
+    }
+
+    match key.as_ref() {
+        keyboard::Key::Named(Named::Escape) => {
+            app.converter.is_open = false;
+        }
+        keyboard::Key::Named(Named::Enter) => {
+            submit_conversion(app);
+        }
+        keyboard::Key::Named(Named::Backspace) => {
+            app.converter.input.pop();
+            app.converter.outcome = None;
+        }
+        _ if !modifiers.command() && !modifiers.control() => {
+            if let Some(text) = text {
+                app.converter.input.push_str(&text);
+                app.converter.outcome = None;
+            }
+        }
+        _ => {}
+    }
+}
+
+fn is_key(key: &keyboard::Key, expected: &str) -> bool {
+    match key.as_ref() {
+        keyboard::Key::Character(character) => character.eq_ignore_ascii_case(expected),
+        _ => false,
+    }
+}
+
+fn open_converter(app: &mut WorldClockApp) {
+    app.converter.is_open = true;
+}
+
+fn submit_conversion(app: &mut WorldClockApp) {
+    app.converter.outcome = Some(
+        match time_conversion::convert_query(&app.converter.input, Local::now().date_naive()) {
+            Ok(conversion) => ConverterOutcome::Converted(conversion),
+            Err(error) => ConverterOutcome::Error(error.to_string()),
+        },
+    );
 }
 
 fn clock_card(

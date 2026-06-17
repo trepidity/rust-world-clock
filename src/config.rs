@@ -85,7 +85,7 @@ fn default_theme() -> String {
 }
 
 fn default_always_on_top() -> bool {
-    true
+    false
 }
 
 impl Default for AppConfig {

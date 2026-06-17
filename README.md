@@ -1,6 +1,6 @@
 # Rust World Clock
 
-A terminal-based world clock application written in Rust. Display the current time for multiple time zones in a customizable grid layout, with built-in themes, an interactive edit mode, daily alarms, and full configuration persistence.
+A world clock application written in Rust. Display the current time for multiple time zones in a graphical window by default, with a terminal UI still available for grid customization, built-in themes, an interactive edit mode, daily alarms, and full configuration persistence.
 
 <img width="1007" height="463" alt="image" src="https://github.com/user-attachments/assets/dccf73b1-3dd9-4a9e-87ef-d8776379b389" />
 
@@ -10,11 +10,12 @@ A terminal-based world clock application written in Rust. Display the current ti
 
 - **Customizable Grid Layout** — Arrange clocks in a configurable row/column grid
 - **6 Built-in Themes** — Default, Dracula, Nord, Solarized Dark, Gruvbox, Monokai (plus custom theme support)
-- **Interactive Edit Mode** — Drag-and-drop widgets, add/remove rows and columns, pick themes, all with mouse and keyboard
+- **Interactive Terminal Edit Mode** — Drag-and-drop widgets, add/remove rows and columns, pick themes, all with mouse and keyboard
 - **3 Widget Display Modes** — Time only, date only, or time and date
 - **Daily Alarms** — Set local-time alarms with visual alerts (red borders)
 - **TOML Configuration** — Full grid layout, theme, and widget config persisted automatically
-- **GUI Mode** — Optional graphical interface via iced
+- **Graphical UI by Default** — Launches the iced desktop interface unless `--tui` is provided
+- **Time Conversion Shortcut** — `Cmd+K` on macOS or `Ctrl+K` elsewhere converts phrases like `I can meet at 7AM CT, what time is that in IST`
 
 ## Installation
 
@@ -45,6 +46,8 @@ Specify the time zones you want to display:
 cargo run -- America/New_York Europe/London Asia/Tokyo
 ```
 
+Running without `--tui` opens the graphical UI.
+
 ### Setting Alarms
 
 Use the `--alarms` flag to set daily alarms (24-hour format, local time):
@@ -59,7 +62,15 @@ cargo run -- --alarms 09:00 17:30 America/New_York Europe/London
 cargo run -- --config ~/my-clocks.toml
 ```
 
+### Terminal UI Mode
+
+```bash
+cargo run -- --tui
+```
+
 ### GUI Mode
+
+The GUI is the default launch path. `--gui` remains accepted for explicit scripts:
 
 ```bash
 cargo run -- --gui
@@ -86,6 +97,14 @@ Files stored in this directory:
 Running without arguments loads your last configuration. Running with new arguments updates the saved config.
 
 ## Controls
+
+### GUI Mode
+
+| Key | Action |
+| :--- | :--- |
+| `Cmd+K` / `Ctrl+K` | Open time conversion |
+| `Enter` | Calculate conversion |
+| `Esc` | Close time conversion |
 
 ### Normal Mode
 
@@ -159,7 +178,7 @@ The full grid layout is configured via TOML at `config.toml` in your config dire
 
 ```toml
 theme = "dracula"
-always_on_top = true
+always_on_top = false
 
 [grid]
 rows = 2
@@ -189,7 +208,7 @@ label = "Tokyo"
 
 Widget types: `time_and_date`, `time_only`, `date_only`
 
-Set `always_on_top = false` if you want the GUI window to behave like a normal window instead of staying above other apps.
+Set `always_on_top = true` if you want the GUI window to stay above other apps.
 
 ## License
 

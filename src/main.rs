@@ -10,6 +10,7 @@ mod edit_mode;
 mod grid;
 mod gui;
 mod theme;
+mod time_conversion;
 mod tui;
 mod tz_abbrev;
 mod widget;
@@ -32,9 +33,13 @@ struct Args {
     #[arg(long, num_args = 1..)]
     alarms: Vec<String>,
 
-    /// Run in GUI mode
+    /// Run in GUI mode (default; retained for compatibility)
     #[arg(long)]
     gui: bool,
+
+    /// Run in terminal UI mode
+    #[arg(long)]
+    tui: bool,
 
     /// Path to config file
     #[arg(long)]
@@ -204,10 +209,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ];
     }
 
-    if args.gui {
-        gui::run(clocks, alarms, app_config.always_on_top)?;
-    } else {
+    if args.tui && !args.gui {
         tui::run(&clocks, &alarms, app_config)?;
+    } else {
+        gui::run(clocks, alarms, app_config.always_on_top)?;
     }
 
     Ok(())
