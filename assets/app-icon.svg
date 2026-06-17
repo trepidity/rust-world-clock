@@ -1,23 +1,23 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="96" y1="64" x2="416" y2="448" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#152033"/>
-      <stop offset="1" stop-color="#0A0F18"/>
+      <stop stop-color="#1B222D"/>
+      <stop offset="1" stop-color="#10141D"/>
     </linearGradient>
     <linearGradient id="ring" x1="150" y1="112" x2="362" y2="400" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F97316"/>
-      <stop offset="1" stop-color="#FB7185"/>
+      <stop stop-color="#F5A623"/>
+      <stop offset="1" stop-color="#FF66AA"/>
     </linearGradient>
   </defs>
   <rect x="32" y="32" width="448" height="448" rx="104" fill="url(#bg)"/>
   <circle cx="256" cy="256" r="150" stroke="url(#ring)" stroke-width="28"/>
-  <path d="M256 106C210 142 184 197 184 256C184 315 210 370 256 406" stroke="#63E6BE" stroke-width="16" stroke-linecap="round" opacity="0.95"/>
-  <path d="M256 106C302 142 328 197 328 256C328 315 302 370 256 406" stroke="#63E6BE" stroke-width="16" stroke-linecap="round" opacity="0.95"/>
-  <path d="M126 212H386" stroke="#5BC0EB" stroke-width="14" stroke-linecap="round" opacity="0.9"/>
-  <path d="M112 256H400" stroke="#DDEAF7" stroke-width="18" stroke-linecap="round"/>
-  <path d="M126 300H386" stroke="#5BC0EB" stroke-width="14" stroke-linecap="round" opacity="0.9"/>
+  <path d="M256 106C210 142 184 197 184 256C184 315 210 370 256 406" stroke="#00E5FF" stroke-width="16" stroke-linecap="round" opacity="0.95"/>
+  <path d="M256 106C302 142 328 197 328 256C328 315 302 370 256 406" stroke="#00E5FF" stroke-width="16" stroke-linecap="round" opacity="0.95"/>
+  <path d="M126 212H386" stroke="#00E5FF" stroke-width="14" stroke-linecap="round" opacity="0.9"/>
+  <path d="M112 256H400" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round"/>
+  <path d="M126 300H386" stroke="#00E5FF" stroke-width="14" stroke-linecap="round" opacity="0.9"/>
   <circle cx="256" cy="256" r="22" fill="#F8FAFC"/>
   <path d="M256 256L256 170" stroke="#F8FAFC" stroke-width="16" stroke-linecap="round"/>
   <path d="M256 256L322 290" stroke="#F8FAFC" stroke-width="16" stroke-linecap="round"/>
-  <circle cx="256" cy="118" r="14" fill="#F97316"/>
+  <circle cx="256" cy="118" r="14" fill="#F5A623"/>
 </svg>

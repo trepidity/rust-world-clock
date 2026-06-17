@@ -35,7 +35,7 @@ impl ClockWidget {
         is_selected: bool,
     ) {
         let time = Utc::now().with_timezone(&self.timezone);
-        let time_str = time.format("%H:%M:%S").to_string();
+        let time_str = time.format("%H:%M:%S %Z").to_string();
         let date_str = time.format("%Y-%m-%d").to_string();
 
         let mut lines: Vec<Line> = Vec::new();

@@ -1,0 +1,54 @@
+<svg width="1024" height="768" viewBox="0 0 1024 768" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1024" height="768" fill="#10141D"/>
+
+  <!-- Grid 2x2 -->
+  <!-- Card 1 (Selected) -->
+  <g transform="translate(24, 24)">
+    <rect width="476" height="320" rx="18" fill="#1B222D" stroke="#F5A623" stroke-width="4.5"/>
+    <!-- Accent Bar -->
+    <rect x="2.25" y="2.25" width="157" height="10" fill="#F5A623"/>
+    <rect x="159.25" y="2.25" width="157" height="10" fill="#FF66AA"/>
+    <rect x="316.25" y="2.25" width="157" height="10" fill="#00E5FF"/>
+    
+    <!-- Centered Content -->
+    <text x="238" y="120" text-anchor="middle" fill="#FFFFFF" font-family="sans-serif" font-size="28" font-weight="600">America/Chicago</text>
+    <rect x="360" y="102" width="60" height="24" rx="12" fill="#F5A623"/>
+    <text x="390" y="119" text-anchor="middle" fill="#10141D" font-family="monospace" font-size="16">HOME</text>
+    
+    <text x="238" y="190" text-anchor="middle" fill="#00E5FF" font-family="monospace" font-size="84" font-weight="bold">14:35:02</text>
+    <text x="238" y="240" text-anchor="middle" fill="#7DD3FC" font-family="monospace" font-size="32">2026-06-17</text>
+  </g>
+
+  <!-- Card 2 -->
+  <g transform="translate(524, 24)">
+    <rect width="476" height="320" rx="12" fill="#1B222D" stroke="#374151" stroke-width="2.5"/>
+    <text x="238" y="120" text-anchor="middle" fill="#FFFFFF" font-family="sans-serif" font-size="28" font-weight="600">Europe/London</text>
+    <text x="238" y="190" text-anchor="middle" fill="#FFFFFF" font-family="monospace" font-size="84" font-weight="bold">20:35:02</text>
+    <text x="238" y="240" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="32">2026-06-17</text>
+  </g>
+
+  <!-- Card 3 -->
+  <g transform="translate(24, 368)">
+    <rect width="476" height="320" rx="12" fill="#1B222D" stroke="#374151" stroke-width="2.5"/>
+    <text x="238" y="120" text-anchor="middle" fill="#FFFFFF" font-family="sans-serif" font-size="28" font-weight="600">Asia/Kolkata</text>
+    <text x="238" y="190" text-anchor="middle" fill="#FFFFFF" font-family="monospace" font-size="84" font-weight="bold">01:05:02</text>
+    <text x="238" y="240" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="32">2026-06-18</text>
+  </g>
+
+  <!-- Card 4 -->
+  <g transform="translate(524, 368)">
+    <rect width="476" height="320" rx="12" fill="#1B222D" stroke="#374151" stroke-width="2.5"/>
+    <text x="238" y="120" text-anchor="middle" fill="#FFFFFF" font-family="sans-serif" font-size="28" font-weight="600">Australia/Sydney</text>
+    <text x="238" y="190" text-anchor="middle" fill="#FFFFFF" font-family="monospace" font-size="84" font-weight="bold">05:35:02</text>
+    <text x="238" y="240" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="32">2026-06-18</text>
+  </g>
+
+  <!-- Footer -->
+  <g transform="translate(512, 730)">
+    <rect x="-40" y="-30" width="36" height="30" rx="8" fill="#374151"/>
+    <text x="-22" y="-9" text-anchor="middle" fill="#FFFFFF" font-size="20">+</text>
+    <rect x="4" y="-30" width="36" height="30" rx="8" fill="#374151"/>
+    <text x="22" y="-9" text-anchor="middle" fill="#FFFFFF" font-size="20">-</text>
+  </g>
+</svg>

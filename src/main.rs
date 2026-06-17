@@ -70,7 +70,7 @@ pub fn get_config_dir() -> Option<PathBuf> {
     }
 }
 
-fn save_clocks(zones: &[String]) {
+pub fn save_clocks(zones: &[String]) {
     if let Some(config_dir) = get_config_dir() {
         let path = config_dir.join("clocks.json");
         let stored = StoredClocks(zones.to_vec());

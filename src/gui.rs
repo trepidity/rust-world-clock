@@ -3,21 +3,26 @@ use crate::time_conversion::{self, TimeConversion};
 use chrono::{Local, NaiveTime, Timelike, Utc};
 use chrono_tz::Tz;
 use iced::{
-    Background, Border, Color, Element, Fill, Font, Shadow, Subscription, Task, Theme, Vector,
-    application, border, keyboard,
+    Background, Border, Color, Element, Fill, Font, Shadow, Size, Subscription, Task, Theme,
+    Vector, application, border, keyboard,
     keyboard::key::Named,
-    widget::{column, container, row, stack, text, text_input},
+    widget::{button, column, container, row, stack, text, text_input},
     window,
 };
 use std::time::Duration;
 
+const INITIAL_WINDOW_SIZE: Size = Size::new(1024.0, 768.0);
+const MIN_WINDOW_SIZE: Size = Size::new(360.0, 220.0);
+
 pub fn run(clocks: Vec<Clock>, alarms: Vec<NaiveTime>, always_on_top: bool) -> iced::Result {
     let initial = WorldClockApp {
         clocks,
+        added_clock_count: 0,
         alarms,
         home_timezone: detect_home_timezone(),
         local_time: Local::now().time(),
         converter: ConverterState::default(),
+        window_size: INITIAL_WINDOW_SIZE,
     };
 
     application(move || (initial.clone(), Task::none()), update, view)
@@ -31,6 +36,8 @@ pub fn run(clocks: Vec<Clock>, alarms: Vec<NaiveTime>, always_on_top: bool) -> i
 
 fn app_window_settings(always_on_top: bool) -> window::Settings {
     window::Settings {
+        size: INITIAL_WINDOW_SIZE,
+        min_size: Some(MIN_WINDOW_SIZE),
         level: if always_on_top {
             window::Level::AlwaysOnTop
         } else {
@@ -73,8 +80,8 @@ fn render_app_icon(size: u32) -> Vec<u8> {
                 corner_radius,
             );
             let bg = lerp_color(
-                [0x15, 0x20, 0x33, 0xFF],
-                [0x0A, 0x0F, 0x18, 0xFF],
+                [0x1B, 0x22, 0x2D, 0xFF],
+                [0x10, 0x14, 0x1D, 0xFF],
                 yf / size_f,
             );
             blend_pixel(&mut pixels, size, x, y, bg, bg_mask);
@@ -82,8 +89,8 @@ fn render_app_icon(size: u32) -> Vec<u8> {
             let dist = (dx * dx + dy * dy).sqrt();
             let ring_mask = stroke_circle_mask(dist, ring_radius, ring_thickness);
             let ring = lerp_color(
-                [0xF9, 0x73, 0x16, 0xFF],
-                [0xFB, 0x71, 0x85, 0xFF],
+                [0xF5, 0xA6, 0x23, 0xFF], // Gold
+                [0xFF, 0x66, 0xAA, 0xFF], // Pink
                 yf / size_f,
             );
             blend_pixel(&mut pixels, size, x, y, ring, ring_mask);
@@ -96,7 +103,7 @@ fn render_app_icon(size: u32) -> Vec<u8> {
                 size,
                 x,
                 y,
-                [0xDD, 0xEA, 0xF7, 0xFF],
+                [0xFF, 0xFF, 0xFF, 0xFF], // White
                 parallel_main,
             );
 
@@ -108,7 +115,7 @@ fn render_app_icon(size: u32) -> Vec<u8> {
                 size,
                 x,
                 y,
-                [0x5B, 0xC0, 0xEB, 0xFF],
+                [0x00, 0xE5, 0xFF, 0xFF], // Cyan
                 parallel_top,
             );
             blend_pixel(
@@ -116,7 +123,7 @@ fn render_app_icon(size: u32) -> Vec<u8> {
                 size,
                 x,
                 y,
-                [0x5B, 0xC0, 0xEB, 0xFF],
+                [0x00, 0xE5, 0xFF, 0xFF], // Cyan
                 parallel_bottom,
             );
 
@@ -129,7 +136,7 @@ fn render_app_icon(size: u32) -> Vec<u8> {
                 size,
                 x,
                 y,
-                [0x63, 0xE6, 0xBE, 0xFF],
+                [0x00, 0xE5, 0xFF, 0xFF], // Cyan
                 meridian_left * 0.95,
             );
             blend_pixel(
@@ -137,7 +144,7 @@ fn render_app_icon(size: u32) -> Vec<u8> {
                 size,
                 x,
                 y,
-                [0x63, 0xE6, 0xBE, 0xFF],
+                [0x00, 0xE5, 0xFF, 0xFF], // Cyan
                 meridian_right * 0.95,
             );
 
@@ -269,22 +276,33 @@ fn lerp_channel(a: u8, b: u8, t: f32) -> u8 {
 #[derive(Clone)]
 struct WorldClockApp {
     clocks: Vec<Clock>,
+    added_clock_count: usize,
     alarms: Vec<NaiveTime>,
     home_timezone: Option<Tz>,
     local_time: NaiveTime,
     converter: ConverterState,
+    window_size: Size,
 }
 
 #[derive(Debug, Clone, Default)]
 struct ConverterState {
     is_open: bool,
+    mode: ConverterMode,
     input: String,
     outcome: Option<ConverterOutcome>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum ConverterMode {
+    #[default]
+    TimeConversion,
+    AddZone,
 }
 
 #[derive(Debug, Clone)]
 enum ConverterOutcome {
     Converted(TimeConversion),
+    ZoneAdded(String),
     Error(String),
 }
 
@@ -292,8 +310,11 @@ enum ConverterOutcome {
 enum Message {
     Tick(NaiveTime),
     Keyboard(keyboard::Event),
+    WindowResized(Size),
     ConverterInputChanged(String),
     SubmitConversion,
+    AddClock,
+    RemoveClock,
 }
 
 fn update(app: &mut WorldClockApp, message: Message) {
@@ -304,12 +325,25 @@ fn update(app: &mut WorldClockApp, message: Message) {
         Message::Keyboard(event) => {
             handle_keyboard(app, event);
         }
+        Message::WindowResized(size) => {
+            app.window_size = size;
+        }
         Message::ConverterInputChanged(input) => {
             app.converter.input = input;
             app.converter.outcome = None;
         }
         Message::SubmitConversion => {
-            submit_conversion(app);
+            submit_overlay(app);
+        }
+        Message::AddClock => {
+            open_add_zone(app);
+        }
+        Message::RemoveClock => {
+            if app.added_clock_count > 0 && !app.clocks.is_empty() {
+                app.clocks.pop();
+                app.added_clock_count -= 1;
+                persist_clocks(app);
+            }
         }
     }
 }
@@ -318,6 +352,7 @@ fn subscription(_app: &WorldClockApp) -> Subscription<Message> {
     Subscription::batch([
         iced::time::every(Duration::from_millis(500)).map(|_| Message::Tick(Local::now().time())),
         keyboard::listen().map(Message::Keyboard),
+        window::resize_events().map(|(_id, size)| Message::WindowResized(size)),
     ])
 }
 
@@ -333,28 +368,93 @@ fn view(app: &WorldClockApp) -> Element<'_, Message> {
     let is_alarm_active = app.alarms.iter().any(|&alarm| {
         app.local_time.hour() == alarm.hour() && app.local_time.minute() == alarm.minute()
     });
+    let metrics = ResponsiveMetrics::new(app.window_size, app.clocks.len());
+    let can_remove_added_clock = app.added_clock_count > 0;
 
-    let content = app.clocks.iter().fold(
-        row!().spacing(20).padding(20).width(Fill).height(Fill),
-        |row, clock| {
-            let is_home_timezone = app
-                .home_timezone
-                .as_ref()
-                .is_some_and(|home_timezone| clock.timezone == *home_timezone);
+    let mut grid = column![].spacing(metrics.card_gap);
+    let mut current_row = row![].spacing(metrics.card_gap);
 
-            row.push(clock_card(clock, is_alarm_active, is_home_timezone))
-        },
-    );
+    for (i, clock) in app.clocks.iter().enumerate() {
+        let is_home_timezone = app
+            .home_timezone
+            .as_ref()
+            .is_some_and(|home_timezone| clock.timezone == *home_timezone);
 
-    let base = container(content)
-        .width(Fill)
-        .height(Fill)
-        .center(Fill)
-        .style(|_| {
-            container::Style::default()
-                .background(Color::BLACK)
-                .color(Color::WHITE)
-        });
+        current_row = current_row.push(clock_card(
+            clock,
+            is_alarm_active,
+            is_home_timezone,
+            metrics,
+        ));
+
+        if (i + 1) % 2 == 0 || (i + 1) == app.clocks.len() {
+            grid = grid.push(current_row);
+            current_row = row![].spacing(metrics.card_gap);
+        }
+    }
+
+    let footer = row![
+        button(
+            container(text("+").size(metrics.badge_size * 1.2))
+                .padding([metrics.badge_padding_y, metrics.badge_padding_x * 1.5])
+                .center_x(Fill)
+        )
+        .on_press(Message::AddClock)
+        .style(|_theme, status| {
+            let bg = match status {
+                button::Status::Hovered | button::Status::Pressed => rgb8(75, 85, 99),
+                _ => rgb8(55, 65, 81),
+            };
+            button::Style {
+                background: Some(Background::Color(bg)),
+                border: border::rounded(8),
+                text_color: Color::WHITE,
+                ..button::Style::default()
+            }
+        }),
+        button(
+            container(text("-").size(metrics.badge_size * 1.2))
+                .padding([metrics.badge_padding_y, metrics.badge_padding_x * 1.5])
+                .center_x(Fill)
+        )
+        .on_press(Message::RemoveClock)
+        .style(move |_theme, status| {
+            let (bg, text_color) = if can_remove_added_clock {
+                let bg = match status {
+                    button::Status::Hovered | button::Status::Pressed => rgb8(75, 85, 99),
+                    _ => rgb8(55, 65, 81),
+                };
+
+                (bg, Color::WHITE)
+            } else {
+                (rgb8(31, 41, 55), rgb8(107, 114, 128))
+            };
+
+            button::Style {
+                background: Some(Background::Color(bg)),
+                border: border::rounded(8),
+                text_color,
+                ..button::Style::default()
+            }
+        }),
+    ]
+    .spacing(metrics.card_gap);
+
+    let base = container(
+        column![grid, footer]
+            .spacing(metrics.card_gap)
+            .align_x(iced::alignment::Horizontal::Center),
+    )
+    .width(Fill)
+    .height(Fill)
+    .padding(metrics.window_padding)
+    .center_x(Fill)
+    .center_y(Fill)
+    .style(|_| {
+        container::Style::default()
+            .background(rgb8(16, 20, 29)) // Sophisticated charcoal
+            .color(Color::WHITE)
+    });
 
     if app.converter.is_open {
         stack![base, converter_overlay(app)]
@@ -367,21 +467,22 @@ fn view(app: &WorldClockApp) -> Element<'_, Message> {
 }
 
 fn converter_overlay(app: &WorldClockApp) -> Element<'_, Message> {
-    let input = text_input(
-        "I can meet at 7AM CT, what time is that in IST",
-        &app.converter.input,
-    )
-    .on_input(Message::ConverterInputChanged)
-    .on_submit(Message::SubmitConversion)
-    .padding(14)
-    .size(22)
-    .width(Fill);
+    let (title, placeholder) = match app.converter.mode {
+        ConverterMode::TimeConversion => (
+            "Time Conversion",
+            "I can meet at 7AM CT, what time is that in IST",
+        ),
+        ConverterMode::AddZone => ("Add Time Zone", "America/New_York"),
+    };
 
-    let mut body = column![
-        text("Time Conversion").size(26).color(rgb8(248, 250, 252)),
-        input,
-    ]
-    .spacing(16);
+    let input = text_input(placeholder, &app.converter.input)
+        .on_input(Message::ConverterInputChanged)
+        .on_submit(Message::SubmitConversion)
+        .padding(14)
+        .size(22)
+        .width(Fill);
+
+    let mut body = column![text(title).size(26).color(rgb8(248, 250, 252)), input,].spacing(16);
 
     if let Some(outcome) = &app.converter.outcome {
         body = body.push(converter_outcome(outcome));
@@ -464,6 +565,18 @@ fn converter_outcome(outcome: &ConverterOutcome) -> Element<'_, Message> {
             })
             .into()
         }
+        ConverterOutcome::ZoneAdded(zone_name) => container(
+            text(format!("Added {zone_name}"))
+                .size(18)
+                .color(rgb8(125, 211, 252)),
+        )
+        .padding(18)
+        .style(|_| {
+            container::Style::default()
+                .background(rgb8(7, 24, 36))
+                .border(border::rounded(8).width(1).color(rgb8(34, 211, 238)))
+        })
+        .into(),
         ConverterOutcome::Error(error) => {
             container(text(error.clone()).size(18).color(rgb8(248, 113, 113)))
                 .padding(18)
@@ -502,7 +615,7 @@ fn handle_keyboard(app: &mut WorldClockApp, event: keyboard::Event) {
             app.converter.is_open = false;
         }
         keyboard::Key::Named(Named::Enter) => {
-            submit_conversion(app);
+            submit_overlay(app);
         }
         keyboard::Key::Named(Named::Backspace) => {
             app.converter.input.pop();
@@ -527,6 +640,25 @@ fn is_key(key: &keyboard::Key, expected: &str) -> bool {
 
 fn open_converter(app: &mut WorldClockApp) {
     app.converter.is_open = true;
+    if app.converter.mode != ConverterMode::TimeConversion {
+        app.converter.input.clear();
+    }
+    app.converter.mode = ConverterMode::TimeConversion;
+    app.converter.outcome = None;
+}
+
+fn open_add_zone(app: &mut WorldClockApp) {
+    app.converter.is_open = true;
+    app.converter.mode = ConverterMode::AddZone;
+    app.converter.input.clear();
+    app.converter.outcome = None;
+}
+
+fn submit_overlay(app: &mut WorldClockApp) {
+    match app.converter.mode {
+        ConverterMode::TimeConversion => submit_conversion(app),
+        ConverterMode::AddZone => submit_add_zone(app),
+    }
 }
 
 fn submit_conversion(app: &mut WorldClockApp) {
@@ -538,52 +670,273 @@ fn submit_conversion(app: &mut WorldClockApp) {
     );
 }
 
+fn submit_add_zone(app: &mut WorldClockApp) {
+    match parse_clock(&app.converter.input, &app.clocks) {
+        Ok(clock) => {
+            let zone_name = clock.name.clone();
+            app.clocks.push(clock);
+            app.added_clock_count += 1;
+            app.converter.input.clear();
+            app.converter.outcome = Some(ConverterOutcome::ZoneAdded(zone_name));
+            persist_clocks(app);
+        }
+        Err(error) => {
+            app.converter.outcome = Some(ConverterOutcome::Error(error));
+        }
+    }
+}
+
+fn parse_clock(input: &str, existing_clocks: &[Clock]) -> Result<Clock, String> {
+    let zone_name = input.trim();
+    if zone_name.is_empty() {
+        return Err("Enter an IANA timezone like America/New_York.".to_string());
+    }
+
+    let timezone = zone_name
+        .parse::<Tz>()
+        .map_err(|_| format!("Unknown timezone: {zone_name}"))?;
+
+    if existing_clocks
+        .iter()
+        .any(|clock| clock.timezone == timezone)
+    {
+        return Err(format!("Timezone already shown: {}", timezone.name()));
+    }
+
+    Ok(Clock {
+        name: timezone.name().to_string(),
+        timezone,
+    })
+}
+
+fn persist_clocks(app: &WorldClockApp) {
+    let zones: Vec<String> = app.clocks.iter().map(|clock| clock.name.clone()).collect();
+    crate::save_clocks(&zones);
+}
+
 fn clock_card(
     clock: &Clock,
     is_alarm_active: bool,
     is_home_timezone: bool,
+    metrics: ResponsiveMetrics,
 ) -> Element<'static, Message> {
     let time = Utc::now().with_timezone(&clock.timezone);
-    let time_str = time.format("%H:%M:%S").to_string();
+    let time_str = time.format("%H:%M:%S %Z").to_string();
     let date_str = time.format("%Y-%m-%d").to_string();
     let home_style = HomeCardStyle::new(is_home_timezone, is_alarm_active);
 
-    container(
-        column![
-            home_accent_bar(is_home_timezone),
-            row![
-                text(clock.name.clone())
-                    .size(24)
-                    .color(home_style.title_color),
-                home_badge(is_home_timezone)
-            ]
-            .spacing(10),
-            text(time_str)
-                .size(72)
-                .font(Font::MONOSPACE)
-                .color(home_style.time_color),
-            text(date_str)
-                .size(28)
-                .font(Font::MONOSPACE)
-                .color(home_style.date_color),
+    let content = column![
+        row![
+            text(clock.name.clone())
+                .size(metrics.title_size_for(&clock.name, is_home_timezone))
+                .color(home_style.title_color),
+            home_badge(is_home_timezone, metrics)
         ]
-        .spacing(if is_home_timezone { 14 } else { 10 })
+        .spacing(metrics.title_gap)
+        .align_y(iced::alignment::Vertical::Center),
+        text(time_str)
+            .size(metrics.time_size)
+            .font(Font::MONOSPACE)
+            .color(home_style.time_color),
+        text(date_str)
+            .size(metrics.date_size)
+            .font(Font::MONOSPACE)
+            .color(home_style.date_color),
+    ]
+    .spacing(if is_home_timezone {
+        metrics.home_content_gap
+    } else {
+        metrics.content_gap
+    })
+    .width(Fill)
+    .align_x(iced::alignment::Horizontal::Center);
+
+    let card_content = if is_home_timezone {
+        column![
+            home_accent_bar(true, metrics),
+            container(content)
+                .width(Fill)
+                .height(Fill)
+                .center_x(Fill)
+                .center_y(Fill)
+        ]
+    } else {
+        column![
+            container(content)
+                .width(Fill)
+                .height(Fill)
+                .center_x(Fill)
+                .center_y(Fill)
+        ]
+    };
+
+    container(card_content)
         .width(Fill)
         .height(Fill)
-        .align_x(iced::alignment::Horizontal::Center),
-    )
-    .width(Fill)
-    .padding(20)
-    .style(move |_| container::Style {
-        background: Some(home_style.background.into()),
-        text_color: Some(Color::WHITE),
-        border: border::rounded(if is_home_timezone { 16 } else { 10 })
-            .width(if is_home_timezone { 4 } else { 2 })
+        .padding(metrics.card_padding)
+        .style(move |_| container::Style {
+            background: Some(home_style.background.into()),
+            text_color: Some(Color::WHITE),
+            border: border::rounded(if is_home_timezone {
+                metrics.home_border_radius
+            } else {
+                metrics.border_radius
+            })
+            .width(if is_home_timezone {
+                metrics.home_border_width
+            } else {
+                metrics.border_width
+            })
             .color(home_style.border_color),
-        shadow: home_style.shadow,
-        ..container::Style::default()
-    })
-    .into()
+            shadow: home_style.shadow,
+            ..container::Style::default()
+        })
+        .into()
+}
+
+#[derive(Clone, Copy)]
+struct ResponsiveMetrics {
+    window_padding: f32,
+    card_gap: f32,
+    card_padding: f32,
+    title_gap: f32,
+    content_gap: f32,
+    home_content_gap: f32,
+    title_size: f32,
+    time_size: f32,
+    date_size: f32,
+    badge_size: f32,
+    badge_padding_y: f32,
+    badge_padding_x: f32,
+    accent_height: f32,
+    border_radius: f32,
+    home_border_radius: f32,
+    border_width: f32,
+    home_border_width: f32,
+    inner_width: f32,
+}
+
+impl ResponsiveMetrics {
+    fn new(window_size: Size, clock_count: usize) -> Self {
+        let size = window_size.max(MIN_WINDOW_SIZE);
+        let clock_count = clock_count.max(1) as f32;
+        let window_area_scale = ((size.width * size.height)
+            / (INITIAL_WINDOW_SIZE.width * INITIAL_WINDOW_SIZE.height))
+            .sqrt()
+            .clamp(0.45, 2.6);
+
+        let window_padding = scaled(24.0, window_area_scale, 12.0, 64.0);
+        let card_gap = scaled(24.0, window_area_scale, 12.0, 48.0);
+        let card_padding = scaled(24.0, window_area_scale, 12.0, 48.0);
+
+        let row_count = if clock_count > 2.0 {
+            (clock_count / 2.0).ceil()
+        } else {
+            1.0
+        };
+
+        let card_width = if clock_count > 2.0 {
+            ((size.width - window_padding * 2.0 - card_gap) / 2.0).max(1.0)
+        } else {
+            ((size.width - window_padding * 2.0 - card_gap * (clock_count - 1.0)) / clock_count)
+                .max(1.0)
+        };
+        let card_height = if clock_count > 2.0 {
+            ((size.height - window_padding * 2.0 - card_gap * (row_count - 1.0)) / row_count)
+                .max(1.0)
+        } else {
+            (size.height - window_padding * 2.0).max(1.0)
+        };
+        let inner_width = (card_width - card_padding * 2.0).max(1.0);
+        let inner_height = (card_height - card_padding * 2.0).max(1.0);
+
+        let base_card_width = if clock_count > 2.0 {
+            ((INITIAL_WINDOW_SIZE.width - 24.0 * 2.0 - 24.0) / 2.0).max(1.0)
+        } else {
+            ((INITIAL_WINDOW_SIZE.width - 24.0 * 2.0 - 24.0 * (clock_count - 1.0)) / clock_count)
+                .max(1.0)
+        };
+        let base_card_height = if clock_count > 2.0 {
+            ((INITIAL_WINDOW_SIZE.height - 24.0 * 2.0 - 24.0 * (row_count - 1.0)) / row_count)
+                .max(1.0)
+        } else {
+            (INITIAL_WINDOW_SIZE.height - 24.0 * 2.0).max(1.0)
+        };
+        let card_scale = ((card_width * card_height) / (base_card_width * base_card_height))
+            .sqrt()
+            .clamp(0.32, 2.6);
+
+        let desired_time_size = 84.0 * card_scale;
+        let time_fit_width = inner_width / (8.0 * 0.62);
+        let time_fit_height = inner_height / 2.4;
+        let time_size = desired_time_size
+            .min(time_fit_width)
+            .min(time_fit_height)
+            .clamp(16.0, 180.0);
+        let date_size = (32.0 * card_scale)
+            .min(inner_width / (10.0 * 0.62))
+            .min(time_size * 0.45)
+            .clamp(10.0, 72.0);
+        let title_size = (28.0 * card_scale).min(time_size * 0.4).clamp(10.0, 56.0);
+
+        Self {
+            window_padding,
+            card_gap,
+            card_padding,
+            title_gap: scaled(12.0, card_scale, 6.0, 28.0),
+            content_gap: scaled(12.0, card_scale, 6.0, 32.0),
+            home_content_gap: scaled(16.0, card_scale, 8.0, 40.0),
+            title_size,
+            time_size,
+            date_size,
+            badge_size: scaled(16.0, card_scale, 10.0, 28.0),
+            badge_padding_y: scaled(5.0, card_scale, 3.0, 10.0),
+            badge_padding_x: scaled(12.0, card_scale, 6.0, 20.0),
+            accent_height: scaled(10.0, card_scale, 4.0, 24.0),
+            border_radius: scaled(12.0, card_scale, 8.0, 28.0),
+            home_border_radius: scaled(18.0, card_scale, 10.0, 36.0),
+            border_width: scaled(2.5, card_scale, 1.0, 6.0),
+            home_border_width: scaled(4.5, card_scale, 2.0, 10.0),
+            inner_width,
+        }
+    }
+
+    fn title_size_for(self, title: &str, is_home_timezone: bool) -> f32 {
+        let badge_width = if is_home_timezone {
+            (4.0 * self.badge_size) + self.badge_padding_x * 2.0 + self.title_gap
+        } else {
+            0.0
+        };
+        let available_width = (self.inner_width - badge_width).max(1.0);
+
+        fit_text_size(
+            title.chars().count(),
+            available_width,
+            self.title_size,
+            9.0,
+            0.58,
+        )
+    }
+}
+
+fn scaled(base: f32, scale: f32, min: f32, max: f32) -> f32 {
+    (base * scale).clamp(min, max)
+}
+
+fn fit_text_size(
+    character_count: usize,
+    available_width: f32,
+    preferred_size: f32,
+    min_size: f32,
+    character_width_ratio: f32,
+) -> f32 {
+    if character_count == 0 {
+        return preferred_size;
+    }
+
+    preferred_size
+        .min(available_width / (character_count as f32 * character_width_ratio))
+        .max(min_size)
 }
 
 fn detect_home_timezone() -> Option<Tz> {
@@ -592,25 +945,28 @@ fn detect_home_timezone() -> Option<Tz> {
     timezone_name.parse::<Tz>().ok()
 }
 
-fn home_accent_bar(is_home_timezone: bool) -> Element<'static, Message> {
+fn home_accent_bar(
+    is_home_timezone: bool,
+    metrics: ResponsiveMetrics,
+) -> Element<'static, Message> {
     if !is_home_timezone {
         return container(column![]).height(0).into();
     }
 
     row![
-        accent_segment(rgb8(249, 115, 22)),
-        accent_segment(rgb8(236, 72, 153)),
-        accent_segment(rgb8(34, 211, 238)),
+        accent_segment(rgb8(245, 166, 35), metrics.accent_height), // Gold
+        accent_segment(rgb8(255, 102, 170), metrics.accent_height), // Pink
+        accent_segment(rgb8(0, 229, 255), metrics.accent_height),  // Cyan
     ]
     .spacing(0)
     .width(Fill)
     .into()
 }
 
-fn accent_segment(color: Color) -> Element<'static, Message> {
+fn accent_segment(color: Color, height: f32) -> Element<'static, Message> {
     container(column![])
         .width(Fill)
-        .height(8)
+        .height(height)
         .style(move |_| container::Style {
             background: Some(Background::Color(color)),
             border: Border::default(),
@@ -621,18 +977,18 @@ fn accent_segment(color: Color) -> Element<'static, Message> {
         .into()
 }
 
-fn home_badge(is_home_timezone: bool) -> Element<'static, Message> {
+fn home_badge(is_home_timezone: bool, metrics: ResponsiveMetrics) -> Element<'static, Message> {
     if !is_home_timezone {
         return container(column![]).width(0).into();
     }
 
     container(
         text("HOME")
-            .size(14)
+            .size(metrics.badge_size)
             .font(Font::MONOSPACE)
             .color(rgb8(12, 18, 28)),
     )
-    .padding([4, 10])
+    .padding([metrics.badge_padding_y, metrics.badge_padding_x])
     .style(|_| {
         container::Style::default()
             .background(rgb8(251, 191, 36))
@@ -657,19 +1013,19 @@ impl HomeCardStyle {
             let border_color = if is_alarm_active {
                 rgb8(248, 113, 113)
             } else {
-                rgb8(251, 191, 36)
+                rgb8(245, 166, 35) // Amber
             };
 
             return Self {
-                background: rgb8(18, 26, 40),
+                background: rgb8(27, 34, 45), // Subtly lighter charcoal
                 border_color,
-                title_color: rgb8(255, 213, 128),
-                time_color: rgb8(125, 249, 255),
-                date_color: rgb8(244, 114, 182),
+                title_color: rgb8(255, 255, 255),
+                time_color: rgb8(0, 229, 255),   // Cyan
+                date_color: rgb8(125, 211, 252), // Soft cyan-tinted light grey
                 shadow: Shadow {
-                    color: rgba8(251, 191, 36, 0.28),
-                    offset: Vector::new(0.0, 8.0),
-                    blur_radius: 24.0,
+                    color: rgba8(245, 166, 35, 0.15),
+                    offset: Vector::new(0.0, 10.0),
+                    blur_radius: 28.0,
                 },
             };
         }
@@ -677,15 +1033,15 @@ impl HomeCardStyle {
         let border_color = if is_alarm_active {
             rgb8(255, 64, 64)
         } else {
-            rgb8(89, 89, 89)
+            rgb8(55, 65, 81) // Desaturated charcoal border
         };
 
         Self {
-            background: rgb8(20, 20, 20),
+            background: rgb8(27, 34, 45), // Subtly lighter charcoal
             border_color,
             title_color: Color::WHITE,
             time_color: Color::WHITE,
-            date_color: rgb8(214, 214, 214),
+            date_color: rgb8(156, 163, 175), // Neutral grey
             shadow: Shadow::default(),
         }
     }
@@ -697,4 +1053,47 @@ fn rgb8(r: u8, g: u8, b: u8) -> Color {
 
 fn rgba8(r: u8, g: u8, b: u8, a: f32) -> Color {
     Color::from_rgba(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, a)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn responsive_metrics_scale_with_window_size() {
+        let default = ResponsiveMetrics::new(INITIAL_WINDOW_SIZE, 2);
+        let small = ResponsiveMetrics::new(Size::new(512.0, 384.0), 2);
+        let large = ResponsiveMetrics::new(Size::new(2048.0, 1536.0), 2);
+
+        assert!(small.time_size < default.time_size);
+        assert!(large.time_size > default.time_size);
+    }
+
+    #[test]
+    fn responsive_metrics_fit_more_clocks_into_the_same_window() {
+        let two_clocks = ResponsiveMetrics::new(INITIAL_WINDOW_SIZE, 2);
+        let eight_clocks = ResponsiveMetrics::new(INITIAL_WINDOW_SIZE, 8);
+
+        assert!(eight_clocks.time_size < two_clocks.time_size);
+    }
+
+    #[test]
+    fn parse_clock_accepts_iana_timezone() {
+        let clock = parse_clock("America/New_York", &[]).expect("timezone should parse");
+
+        assert_eq!(clock.name, "America/New_York");
+        assert_eq!(clock.timezone, chrono_tz::America::New_York);
+    }
+
+    #[test]
+    fn parse_clock_rejects_duplicate_timezone() {
+        let existing = [Clock {
+            name: "America/New_York".to_string(),
+            timezone: chrono_tz::America::New_York,
+        }];
+
+        let error = parse_clock("America/New_York", &existing).expect_err("duplicate should fail");
+
+        assert_eq!(error, "Timezone already shown: America/New_York");
+    }
 }

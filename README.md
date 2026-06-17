@@ -103,6 +103,8 @@ Running without arguments loads your last configuration. Running with new argume
 | Key | Action |
 | :--- | :--- |
 | `Cmd+K` / `Ctrl+K` | Open time conversion |
+| `+` footer button | Add an IANA timezone to the clock grid |
+| `-` footer button | Remove the most recently added timezone from this session |
 | `Enter` | Calculate conversion |
 | `Esc` | Close time conversion |
 
