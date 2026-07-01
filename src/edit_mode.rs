@@ -1,6 +1,7 @@
 use crate::config::{self, AppConfig, WidgetKind};
 use crate::grid::Grid;
 use crate::theme::Theme;
+use crate::timezone_search;
 use crate::widget::ClockWidget;
 use chrono_tz::Tz;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
@@ -56,7 +57,6 @@ pub struct AddWidgetPopup {
     pub selected_timezone: Option<String>,
     pub selected_kind: Option<WidgetKind>,
     pub label_input: String,
-    all_zones: Vec<String>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -68,12 +68,10 @@ pub enum AddWidgetStep {
 
 impl AddWidgetPopup {
     pub fn new() -> Self {
-        let all_zones: Vec<String> = chrono_tz::TZ_VARIANTS
-            .iter()
-            .map(|tz| tz.name().to_string())
+        let filtered_zones: Vec<(String, String)> = timezone_search::all_timezones()
+            .into_iter()
+            .map(|matched| (matched.display, matched.zone_name))
             .collect();
-        let filtered_zones: Vec<(String, String)> =
-            all_zones.iter().map(|z| (z.clone(), z.clone())).collect();
         let mut list_state = ListState::default();
         list_state.select(Some(0));
         AddWidgetPopup {
@@ -84,52 +82,14 @@ impl AddWidgetPopup {
             selected_timezone: None,
             selected_kind: None,
             label_input: String::new(),
-            all_zones,
         }
     }
 
     pub fn update_filter(&mut self) {
-        use crate::tz_abbrev::abbreviation_map;
-        use std::collections::HashSet;
-
-        let query = self.search_query.to_lowercase();
-
-        let mut seen = HashSet::new();
-        let mut results: Vec<(String, String)> = Vec::new();
-
-        // Abbreviation matches first
-        let abbrev_map = abbreviation_map();
-        let query_upper = self.search_query.to_uppercase();
-        if let Some(tzs) = abbrev_map.get(query_upper.as_str()) {
-            for tz in tzs {
-                let iana = tz.name().to_string();
-                let display = format!("{} ({})", iana, query_upper);
-                seen.insert(iana.clone());
-                results.push((display, iana));
-            }
-        }
-
-        // Also match partial abbreviation prefixes
-        for (&abbrev, tzs) in &abbrev_map {
-            if abbrev.to_lowercase().starts_with(&query) && abbrev != query_upper.as_str() {
-                for tz in tzs {
-                    let iana = tz.name().to_string();
-                    if seen.insert(iana.clone()) {
-                        let display = format!("{} ({})", iana, abbrev);
-                        results.push((display, iana));
-                    }
-                }
-            }
-        }
-
-        // IANA substring matches
-        for zone in &self.all_zones {
-            if zone.to_lowercase().contains(&query) && seen.insert(zone.clone()) {
-                results.push((zone.clone(), zone.clone()));
-            }
-        }
-
-        self.filtered_zones = results;
+        self.filtered_zones = timezone_search::search_timezones(&self.search_query, 0)
+            .into_iter()
+            .map(|matched| (matched.display, matched.zone_name))
+            .collect();
         if self.filtered_zones.is_empty() {
             self.list_state.select(None);
         } else {

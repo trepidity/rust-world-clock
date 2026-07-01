@@ -11,6 +11,7 @@ mod grid;
 mod gui;
 mod theme;
 mod time_conversion;
+mod timezone_search;
 mod tui;
 mod tz_abbrev;
 mod widget;

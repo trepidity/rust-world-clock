@@ -1,5 +1,6 @@
 use crate::Clock;
 use crate::time_conversion::{self, TimeConversion};
+use crate::timezone_search::{self, TimezoneSearchMatch};
 use chrono::{Local, NaiveTime, Timelike, Utc};
 use chrono_tz::Tz;
 use iced::{
@@ -313,6 +314,7 @@ enum Message {
     WindowResized(Size),
     ConverterInputChanged(String),
     SubmitConversion,
+    SelectZone(String),
     AddClock,
     RemoveClock,
 }
@@ -333,6 +335,10 @@ fn update(app: &mut WorldClockApp, message: Message) {
             app.converter.outcome = None;
         }
         Message::SubmitConversion => {
+            submit_overlay(app);
+        }
+        Message::SelectZone(zone_name) => {
+            app.converter.input = zone_name;
             submit_overlay(app);
         }
         Message::AddClock => {
@@ -484,6 +490,13 @@ fn converter_overlay(app: &WorldClockApp) -> Element<'_, Message> {
 
     let mut body = column![text(title).size(26).color(rgb8(248, 250, 252)), input,].spacing(16);
 
+    if app.converter.mode == ConverterMode::AddZone {
+        let suggestions = add_zone_suggestions(app);
+        if !suggestions.is_empty() {
+            body = body.push(add_zone_suggestion_list(suggestions));
+        }
+    }
+
     if let Some(outcome) = &app.converter.outcome {
         body = body.push(converter_outcome(outcome));
     }
@@ -514,6 +527,49 @@ fn converter_overlay(app: &WorldClockApp) -> Element<'_, Message> {
                 .color(Color::WHITE)
         })
         .into()
+}
+
+fn add_zone_suggestions(app: &WorldClockApp) -> Vec<TimezoneSearchMatch> {
+    if app.converter.input.trim().is_empty() {
+        return Vec::new();
+    }
+
+    timezone_search::search_timezones(&app.converter.input, 6)
+        .into_iter()
+        .filter(|matched| !timezone_already_shown(&matched.zone_name, &app.clocks))
+        .collect()
+}
+
+fn add_zone_suggestion_list(suggestions: Vec<TimezoneSearchMatch>) -> Element<'static, Message> {
+    let mut list = column![].spacing(8);
+
+    for suggestion in suggestions {
+        let zone_name = suggestion.zone_name.clone();
+        list = list.push(
+            button(
+                container(text(suggestion.display).size(16).color(rgb8(226, 232, 240)))
+                    .width(Fill)
+                    .padding(10),
+            )
+            .width(Fill)
+            .on_press(Message::SelectZone(zone_name))
+            .style(|_theme, status| {
+                let background = match status {
+                    button::Status::Hovered | button::Status::Pressed => rgb8(30, 41, 59),
+                    _ => rgb8(15, 23, 42),
+                };
+
+                button::Style {
+                    background: Some(Background::Color(background)),
+                    border: border::rounded(8).width(1).color(rgb8(51, 65, 85)),
+                    text_color: rgb8(226, 232, 240),
+                    ..button::Style::default()
+                }
+            }),
+        );
+    }
+
+    list.into()
 }
 
 fn converter_outcome(outcome: &ConverterOutcome) -> Element<'_, Message> {
@@ -689,17 +745,15 @@ fn submit_add_zone(app: &mut WorldClockApp) {
 fn parse_clock(input: &str, existing_clocks: &[Clock]) -> Result<Clock, String> {
     let zone_name = input.trim();
     if zone_name.is_empty() {
-        return Err("Enter an IANA timezone like America/New_York.".to_string());
+        return Err(
+            "Search for a city or enter an IANA timezone like America/New_York.".to_string(),
+        );
     }
 
-    let timezone = zone_name
-        .parse::<Tz>()
-        .map_err(|_| format!("Unknown timezone: {zone_name}"))?;
+    let timezone = timezone_search::resolve_timezone(zone_name)
+        .ok_or_else(|| format!("No timezone match for: {zone_name}"))?;
 
-    if existing_clocks
-        .iter()
-        .any(|clock| clock.timezone == timezone)
-    {
+    if timezone_already_shown(timezone.name(), existing_clocks) {
         return Err(format!("Timezone already shown: {}", timezone.name()));
     }
 
@@ -707,6 +761,16 @@ fn parse_clock(input: &str, existing_clocks: &[Clock]) -> Result<Clock, String> 
         name: timezone.name().to_string(),
         timezone,
     })
+}
+
+fn timezone_already_shown(zone_name: &str, existing_clocks: &[Clock]) -> bool {
+    let Ok(timezone) = zone_name.parse::<Tz>() else {
+        return false;
+    };
+
+    existing_clocks
+        .iter()
+        .any(|clock| clock.timezone == timezone || clock.name == timezone.name())
 }
 
 fn persist_clocks(app: &WorldClockApp) {
@@ -1083,6 +1147,26 @@ mod tests {
 
         assert_eq!(clock.name, "America/New_York");
         assert_eq!(clock.timezone, chrono_tz::America::New_York);
+    }
+
+    #[test]
+    fn parse_clock_accepts_pasted_turkiye_display_name() {
+        let clock = parse_clock(
+            "T\u{00fc}rkiye Standard Time\nTime zone in T\u{00fc}rkiye (GMT+3)",
+            &[],
+        )
+        .expect("timezone display label should parse");
+
+        assert_eq!(clock.name, "Europe/Istanbul");
+        assert_eq!(clock.timezone, chrono_tz::Europe::Istanbul);
+    }
+
+    #[test]
+    fn parse_clock_accepts_fuzzy_city_search() {
+        let clock = parse_clock("istnbul", &[]).expect("fuzzy city search should parse");
+
+        assert_eq!(clock.name, "Europe/Istanbul");
+        assert_eq!(clock.timezone, chrono_tz::Europe::Istanbul);
     }
 
     #[test]
