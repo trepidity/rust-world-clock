@@ -1,7 +1,7 @@
 use crate::Clock;
 use crate::time_conversion::{self, TimeConversion};
 use crate::timezone_search::{self, TimezoneSearchMatch};
-use chrono::{Local, NaiveTime, Timelike, Utc};
+use chrono::{Local, NaiveDate, NaiveDateTime, NaiveTime, Timelike, Utc};
 use chrono_tz::Tz;
 use iced::{
     Background, Border, Color, Element, Fill, Font, Shadow, Size, Subscription, Task, Theme,
@@ -22,6 +22,7 @@ pub fn run(clocks: Vec<Clock>, alarms: Vec<NaiveTime>, always_on_top: bool) -> i
         alarms,
         home_timezone: detect_home_timezone(),
         local_time: Local::now().time(),
+        local_date: Local::now().date_naive(),
         converter: ConverterState::default(),
         window_size: INITIAL_WINDOW_SIZE,
     };
@@ -281,6 +282,7 @@ struct WorldClockApp {
     alarms: Vec<NaiveTime>,
     home_timezone: Option<Tz>,
     local_time: NaiveTime,
+    local_date: NaiveDate,
     converter: ConverterState,
     window_size: Size,
 }
@@ -309,7 +311,7 @@ enum ConverterOutcome {
 
 #[derive(Debug, Clone)]
 enum Message {
-    Tick(NaiveTime),
+    Tick(NaiveDateTime),
     Keyboard(keyboard::Event),
     WindowResized(Size),
     ConverterInputChanged(String),
@@ -321,8 +323,9 @@ enum Message {
 
 fn update(app: &mut WorldClockApp, message: Message) {
     match message {
-        Message::Tick(time) => {
-            app.local_time = time;
+        Message::Tick(now) => {
+            app.local_time = now.time();
+            app.local_date = now.date();
         }
         Message::Keyboard(event) => {
             handle_keyboard(app, event);
@@ -356,14 +359,23 @@ fn update(app: &mut WorldClockApp, message: Message) {
 
 fn subscription(_app: &WorldClockApp) -> Subscription<Message> {
     Subscription::batch([
-        iced::time::every(Duration::from_millis(500)).map(|_| Message::Tick(Local::now().time())),
+        iced::time::every(Duration::from_millis(500))
+            .map(|_| Message::Tick(Local::now().naive_local())),
         keyboard::listen().map(Message::Keyboard),
         window::resize_events().map(|(_id, size)| Message::WindowResized(size)),
     ])
 }
 
-fn app_title(_app: &WorldClockApp) -> String {
-    String::from("Rust World Clock")
+fn app_title(app: &WorldClockApp) -> String {
+    format!(
+        "Rust World Clock \u{2014} {}",
+        format_title_date(app.local_date)
+    )
+}
+
+/// Weekday abbreviation plus the long local date, e.g. `Mon, August 31, 2026`.
+fn format_title_date(date: NaiveDate) -> String {
+    date.format("%a, %B %-d, %Y").to_string()
 }
 
 fn app_theme(_app: &WorldClockApp) -> Theme {
@@ -1139,6 +1151,13 @@ mod tests {
         let eight_clocks = ResponsiveMetrics::new(INITIAL_WINDOW_SIZE, 8);
 
         assert!(eight_clocks.time_size < two_clocks.time_size);
+    }
+
+    #[test]
+    fn title_date_uses_day_abbreviation_and_long_local_date() {
+        let date = NaiveDate::from_ymd_opt(2026, 8, 31).unwrap();
+
+        assert_eq!(format_title_date(date), "Mon, August 31, 2026");
     }
 
     #[test]
